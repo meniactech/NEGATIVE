@@ -20,7 +20,8 @@ export type ModifierType =
 	| 'bw'
 	| 'split'
 	| 'blurRadial'
-	| 'blurLinear';
+	| 'blurLinear'
+	| 'border';
 
 /**
  * One effect on the stack. `amount` is the main slider; extra fields are
@@ -48,6 +49,8 @@ export type Modifier = {
 	angle: number;
 	/** Blur: 0 sharp-in-mask, 1 inverted (blur the focus region). */
 	invert: number;
+	/** Border look: 0 print, 1 Polaroid, 2 film rebate. */
+	style: number;
 };
 
 /** What preview / export / batch all consume. */

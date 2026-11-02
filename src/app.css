@@ -472,6 +472,25 @@ button {
 	padding: 0.35rem 0.4rem;
 }
 
+.mod-style {
+	margin: 0.55rem 0 0.85rem;
+}
+
+.mod-style label {
+	display: block;
+	font-size: 0.8rem;
+	margin-bottom: 0.25rem;
+	color: var(--ink-dim);
+}
+
+.mod-style-select {
+	width: 100%;
+	background: #0c0b0a;
+	border: 1px solid var(--bg-line);
+	border-radius: var(--radius);
+	padding: 0.35rem 0.4rem;
+}
+
 .slider {
 	margin-bottom: 0.85rem;
 }

@@ -25,6 +25,11 @@ export type SliderSpec = {
 	step?: number;
 };
 
+export type StyleChoice = {
+	value: number;
+	label: string;
+};
+
 export type ModifierInfo = {
 	type: ModifierType;
 	name: string;
@@ -33,6 +38,8 @@ export type ModifierInfo = {
 	sliders: SliderSpec[];
 	/** Extra RGB sliders (split tone). */
 	rgb?: boolean;
+	/** Discrete look picker (border). */
+	styles?: StyleChoice[];
 };
 
 export const MODIFIER_INFO: ModifierInfo[] = [
@@ -123,6 +130,21 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 			{ field: 'softness', label: 'Softness', min: 0.05, max: 1 },
 			{ field: 'invert', label: 'Invert', min: 0, max: 1 }
 		]
+	},
+	{
+		type: 'border',
+		name: 'Border',
+		note: 'Print paper, Polaroid, or film rebate',
+		sliders: [
+			{ field: 'amount', label: 'Width', min: 0, max: 0.28 },
+			{ field: 'tint', label: 'Tone', min: 0, max: 1 },
+			{ field: 'shadows', label: 'Warmth', min: 0, max: 1 }
+		],
+		styles: [
+			{ value: 0, label: 'Print' },
+			{ value: 1, label: 'Polaroid' },
+			{ value: 2, label: 'Film' }
+		]
 	}
 ];
 
@@ -150,7 +172,8 @@ function blank(type: ModifierType, amount: number, extra: Partial<Modifier> = {}
 		radius: extra.radius ?? 0.28,
 		softness: extra.softness ?? 0.4,
 		angle: extra.angle ?? 0,
-		invert: extra.invert ?? 0
+		invert: extra.invert ?? 0,
+		style: extra.style ?? 0
 	};
 }
 
@@ -184,6 +207,8 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 0.55, { id, radius: 0.22, softness: 0.45 });
 		case 'blurLinear':
 			return blank(type, 0.55, { id, angle: 0, radius: 0.16, softness: 0.4 });
+		case 'border':
+			return blank(type, 0.1, { id, tint: 0.9, shadows: 0.22, style: 0 });
 	}
 }
 
@@ -215,5 +240,7 @@ export const M = {
 	grain: (n: number) => blank('grain', n),
 	bw: (n: number) => blank('bw', n),
 	split: (amount: number, shadows: Rgb, highlights: Rgb) =>
-		blank('split', amount, { splitShadows: shadows, splitHighlights: highlights })
+		blank('split', amount, { splitShadows: shadows, splitHighlights: highlights }),
+	border: (width: number, tone: number, warmth = 0.22, style = 0) =>
+		blank('border', width, { tint: tone, shadows: warmth, style })
 };

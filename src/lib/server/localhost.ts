@@ -17,7 +17,8 @@ const TYPES: ModifierType[] = [
 	'bw',
 	'split',
 	'blurRadial',
-	'blurLinear'
+	'blurLinear',
+	'border'
 ];
 
 export function assertLocal(event: RequestEvent): void {
@@ -57,7 +58,8 @@ function parseMod(raw: unknown, i: number): Modifier | null {
 		radius: num(s.radius, base.radius),
 		softness: num(s.softness, base.softness),
 		angle: num(s.angle, base.angle),
-		invert: num(s.invert, base.invert)
+		invert: num(s.invert, base.invert),
+		style: num(s.style, base.style)
 	};
 }
 

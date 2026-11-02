@@ -11,8 +11,9 @@ NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to yo
 - Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
 - Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process.
 - **Mine**: save, rename, duplicate and delete your own looks. They live in this browser (`localStorage`), not in a file.
-- Stack modifiers (only stacked effects run): white balance, saturation, contrast, fade, tone, vignette, grain, black & white, split tone, **radial blur**, **linear blur**.
+- Stack modifiers (only stacked effects run): white balance, saturation, contrast, fade, tone, vignette, grain, black & white, split tone, **radial blur**, **linear blur**, **border**.
 - Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
+- Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
 - Export the current photo, or apply the current stack to a folder. Originals are never overwritten.
 
 ## Requirements
@@ -72,8 +73,9 @@ PORT=8084 HOST=127.0.0.1 node build
 
 | Path | Role |
 |---|---|
-| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; blur is a whole-buffer pass. |
+| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; blur and border are whole-buffer passes. |
 | `src/lib/blur.ts` | Masked gaussian-ish blur (radial disc / linear band). |
+| `src/lib/border.ts` | Print / Polaroid / film rebate (photo scaled into the frame). |
 | `src/lib/modifiers.ts` | Catalogue of addable effects (labels, defaults). |
 | `src/lib/presets.ts` | Built-in named stacks. Clicking one copies that stack into the editor. |
 | `src/lib/userLooks.ts` | Save / load user looks in `localStorage`. |

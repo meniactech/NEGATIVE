@@ -65,6 +65,26 @@
 		<button type="button" class="btn btn-icon" onclick={onRemove} aria-label="Remove">×</button>
 	</header>
 	{#if open}
+		{#if info.styles}
+			<div class="mod-style">
+				<label for={mod.id + '-style'}>Style</label>
+				<select
+					id={mod.id + '-style'}
+					class="mod-style-select"
+					value={String(mod.style)}
+					onchange={(e) => {
+						const next = Number(e.currentTarget.value);
+						mod.style = next;
+						if (next === 2 && mod.tint > 0.45) mod.tint = 0.08;
+						else if (next !== 2 && mod.tint < 0.45) mod.tint = next === 1 ? 0.94 : 0.9;
+					}}
+				>
+					{#each info.styles as opt (opt.value)}
+						<option value={String(opt.value)}>{opt.label}</option>
+					{/each}
+				</select>
+			</div>
+		{/if}
 		{#each info.sliders as s (s.field)}
 			<Slider
 				id={mod.id + '-' + s.field}

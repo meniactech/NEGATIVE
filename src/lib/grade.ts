@@ -1,9 +1,8 @@
 /**
  * Pixel-grade engine for NEGATIVE.
  *
- * Applies `settings.stack` in order. Point effects run per pixel; blur is a
- * whole-buffer pass because it needs neighbours. Unused effects are simply
- * not on the stack.
+ * Applies `settings.stack` in order. Point effects run per pixel; blur and
+ * border are whole-buffer passes. Unused effects are simply not on the stack.
  *
  * This file has no DOM and no Node APIs. Preview, export and batch all
  * call `gradeRgba` with the same settings object.
@@ -13,6 +12,7 @@
  * The inner loop mutates locals in place. Returning a new [r,g,b] array
  * per modifier per pixel will freeze the UI while a slider is dragged.
  */
+import { applyBorder, isBorderType } from './border';
 import { applyMaskedBlur, isBlurType } from './blur';
 import type { GradeSettings, Modifier, Rgb } from './types';
 
@@ -213,12 +213,16 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 
 	let i = 0;
 	while (i < active.length) {
-		if (isBlurType(active[i].type)) {
+		const t = active[i].type;
+		if (isBlurType(t)) {
 			work = applyMaskedBlur(work, active[i]);
+			i++;
+		} else if (isBorderType(t)) {
+			work = applyBorder(work, active[i]);
 			i++;
 		} else {
 			const run: Modifier[] = [];
-			while (i < active.length && !isBlurType(active[i].type)) {
+			while (i < active.length && !isBlurType(active[i].type) && !isBorderType(active[i].type)) {
 				run.push(active[i]);
 				i++;
 			}

@@ -18,7 +18,8 @@ const TYPES: ModifierType[] = [
 	'bw',
 	'split',
 	'blurRadial',
-	'blurLinear'
+	'blurLinear',
+	'border'
 ];
 
 function asRgb(value: unknown, fallback: Rgb): Rgb {
@@ -55,7 +56,8 @@ function sanitizeMod(raw: unknown): Modifier | null {
 		radius: clampNum(o.radius, base.radius),
 		softness: clampNum(o.softness, base.softness),
 		angle: clampNum(o.angle, base.angle),
-		invert: clampNum(o.invert, base.invert)
+		invert: clampNum(o.invert, base.invert),
+		style: clampNum(o.style, base.style)
 	};
 }
 
