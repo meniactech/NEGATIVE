@@ -4,6 +4,8 @@ Film-style looks for ordinary photos. Design on one JPEG/PNG/WebP, then apply th
 
 NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to your filesystem and only accepts requests from this machine.
 
+![NEGATIVE UI](docs/NEGATIVE.png)
+
 ## What you can do
 
 - Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
