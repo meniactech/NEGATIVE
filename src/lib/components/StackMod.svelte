@@ -4,6 +4,7 @@
 	 * Drag the grip to reorder. Click the name to open sliders.
 	 */
 	import Slider from './Slider.svelte';
+	import { applyCropMod, isCropApplied, resetCropMod } from '$lib/crop';
 	import { infoFor } from '$lib/modifiers';
 	import type { Modifier } from '$lib/types';
 
@@ -18,7 +19,9 @@
 		onRemove,
 		onDragStart,
 		onDragEnd,
-		onScrub
+		onScrub,
+		onCrop,
+		onResetCrop
 	}: {
 		mod: Modifier;
 		index: number;
@@ -31,9 +34,12 @@
 		onDragStart: (e: DragEvent) => void;
 		onDragEnd: () => void;
 		onScrub?: (field: string | null) => void;
+		onCrop?: () => void;
+		onResetCrop?: () => void;
 	} = $props();
 
 	const info = $derived(infoFor(mod.type));
+	const cropReady = $derived(mod.type === 'crop' && isCropApplied(mod));
 </script>
 
 <article
@@ -65,6 +71,18 @@
 		<button type="button" class="btn btn-icon" onclick={onRemove} aria-label="Remove">×</button>
 	</header>
 	{#if open}
+		{#if mod.type === 'crop'}
+			<p class="tag">Drag the rectangle on the photo.</p>
+			<div class="mod-actions">
+				<button
+					class="btn btn-primary"
+					type="button"
+					disabled={cropReady}
+					onclick={() => (onCrop ? onCrop() : applyCropMod(mod))}
+				>Crop</button>
+				<button class="btn" type="button" onclick={() => (onResetCrop ? onResetCrop() : resetCropMod(mod))}>Reset</button>
+			</div>
+		{/if}
 		{#if info.styles}
 			<div class="mod-style">
 				<label for={mod.id + '-style'}>Style</label>

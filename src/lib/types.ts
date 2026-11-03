@@ -32,7 +32,8 @@ export type ModifierType =
 	| 'stamp'
 	| 'chroma'
 	| 'coffee'
-	| 'halftone';
+	| 'halftone'
+	| 'crop';
 
 export const MODIFIER_TYPES: ModifierType[] = [
 	'wb',
@@ -57,7 +58,8 @@ export const MODIFIER_TYPES: ModifierType[] = [
 	'stamp',
 	'chroma',
 	'coffee',
-	'halftone'
+	'halftone',
+	'crop'
 ];
 
 /**
@@ -84,9 +86,9 @@ export type Modifier = {
 	softness: number;
 	/** Linear blur: band rotation in degrees, 0 = horizontal strip. */
 	angle: number;
-	/** Blur: 0 sharp-in-mask, 1 inverted (blur the focus region). */
+	/** Blur: 0 sharp-in-mask, 1 inverted. Crop: 0 still framing, 1 applied. */
 	invert: number;
-	/** Border / leak / stamp / B&W / coffee / halftone look. */
+	/** Border / leak / stamp / B&W / coffee / halftone / crop look. */
 	style: number;
 	/** Grain / leak / dust / coffee: phase. Mixed with `batchKey` on folder batch. */
 	seed: number;

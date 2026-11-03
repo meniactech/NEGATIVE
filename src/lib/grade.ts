@@ -2,8 +2,9 @@
  * Pixel-grade engine for NEGATIVE.
  *
  * Applies `settings.stack` in order. Point effects run per pixel; blur,
- * border, leak, glow, dust, stamp, chroma, coffee, halftone and clarity are whole-buffer
- * passes. Unused effects are simply not on the stack.
+ * border, leak, glow, dust, stamp, chroma, coffee, halftone, crop and clarity are
+ * whole-buffer passes. Unused effects are simply not on the stack. Crop always
+ * frames the source first so the look, strength mix and export share one window.
  *
  * This file has no DOM and no Node APIs. Preview, export and batch all
  * call `gradeRgba` with the same settings object.
@@ -18,6 +19,7 @@ import { applyMaskedBlur, isBlurType } from './blur';
 import { applyChroma, isChromaType } from './chroma';
 import { applyClarity, isClarityType } from './clarity';
 import { applyCoffee, isCoffeeType } from './coffee';
+import { applyCrop, isCropApplied, isCropType, isIdentityCrop } from './crop';
 import { applyDust, isDustType } from './dust';
 import { applyGlow, isGlowType } from './glow';
 import { applyHalftone, isHalftoneType } from './halftone';
@@ -250,15 +252,28 @@ function mixStrength(src: RgbaBuffer, graded: RgbaBuffer, strength: number): Rgb
 export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer {
 	const strength = clamp01(settings.strength);
 	const active: Modifier[] = [];
+	let crop: Modifier | null = null;
 	for (const m of settings.stack) {
-		if (m.enabled) active.push(m);
+		if (!m.enabled) continue;
+		if (isCropType(m.type)) {
+			if (!crop) crop = m;
+			continue;
+		}
+		active.push(m);
 	}
 
-	let work: RgbaBuffer = {
-		data: new Uint8ClampedArray(src.data),
-		width: src.width,
-		height: src.height
-	};
+	let mixBase = src;
+	let work: RgbaBuffer;
+	if (crop && isCropApplied(crop) && !isIdentityCrop(crop)) {
+		work = applyCrop(src, crop);
+		mixBase = work;
+	} else {
+		work = {
+			data: new Uint8ClampedArray(src.data),
+			width: src.width,
+			height: src.height
+		};
+	}
 
 	const batchKey = settings.batchKey;
 	let i = 0;
@@ -304,6 +319,6 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 		}
 	}
 
-	if (strength < 0.999) return mixStrength(src, work, strength);
+	if (strength < 0.999) return mixStrength(mixBase, work, strength);
 	return work;
 }

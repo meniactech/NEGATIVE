@@ -5,8 +5,10 @@
 	 */
 	import { onMount, untrack } from 'svelte';
 	import BlurGizmo from '$lib/components/BlurGizmo.svelte';
+	import CropGizmo from '$lib/components/CropGizmo.svelte';
 	import Slider from '$lib/components/Slider.svelte';
 	import StackMod from '$lib/components/StackMod.svelte';
+	import { applyCropMod, cropRect, isCropApplied, isIdentityCrop, resetCropMod } from '$lib/crop';
 	import { MODIFIER_INFO, newModifier } from '$lib/modifiers';
 	import { defaultSettings, LOOKS, settingsFromLook } from '$lib/presets';
 	import type { GradeSettings, Look, Modifier, ModifierType } from '$lib/types';
@@ -19,7 +21,17 @@
 		persistUserLooks,
 		uniqueLookName
 	} from '$lib/userLooks';
-	import { PREVIEW_HQ, PREVIEW_LIVE, gradePixels, loadImage, presentOn, presentSplit, rasterize, readPixels } from '$lib/preview';
+	import {
+		PREVIEW_HQ,
+		PREVIEW_LIVE,
+		drawContained,
+		gradePixels,
+		loadImage,
+		presentOn,
+		presentSplit,
+		rasterize,
+		readPixels
+	} from '$lib/preview';
 
 	let file = $state<File | null>(null);
 	let livePixels: ImageData | null = null;
@@ -28,9 +40,14 @@
 	let hqOut: HTMLCanvasElement | null = null;
 	let compareLiveOut: HTMLCanvasElement | null = null;
 	let compareHqOut: HTMLCanvasElement | null = null;
+	let origLive: HTMLCanvasElement | null = null;
+	let origHq: HTMLCanvasElement | null = null;
 	let frameCanvas: HTMLCanvasElement | null = null;
 	let originalCanvas = $state<HTMLCanvasElement | null>(null);
 	let previewCanvas = $state<HTMLCanvasElement | null>(null);
+	/** Stage frame size. Canvas buffers are reused, so width/height are not reactive. */
+	let frameW = $state(0);
+	let frameH = $state(0);
 	let viewEl = $state<HTMLCanvasElement | null>(null);
 	let stageViewEl = $state<HTMLElement | null>(null);
 	let showOriginal = $state(false);
@@ -86,12 +103,25 @@
 		void m.angle;
 		return m;
 	});
-	const shown = $derived(showOriginal || holdOriginal ? originalCanvas : previewCanvas);
+	const cropMod = $derived.by((): Modifier | null => {
+		const m = settings.stack.find((x) => x.type === 'crop' && x.enabled);
+		if (!m) return null;
+		void m.centerX;
+		void m.centerY;
+		void m.radius;
+		void m.softness;
+		void m.invert;
+		return m;
+	});
+	const cropEditing = $derived(!!(cropMod && !isCropApplied(cropMod)));
+	const shown = $derived(
+		showOriginal || holdOriginal ? origHq || origLive || originalCanvas : previewCanvas
+	);
 	const compareLooks = $derived([...LOOKS, ...userLooks]);
 	const usedTypes = $derived(new Set(settings.stack.map((m) => m.type)));
 	const addable = $derived(MODIFIER_INFO.filter((m) => !usedTypes.has(m.type)));
-	const imgW = $derived(originalCanvas?.width || shown?.width || 0);
-	const imgH = $derived(originalCanvas?.height || shown?.height || 0);
+	const imgW = $derived(frameW || previewCanvas?.width || originalCanvas?.width || 0);
+	const imgH = $derived(frameH || previewCanvas?.height || originalCanvas?.height || 0);
 	const fitScale = $derived.by(() => {
 		if (!imgW || !imgH || !viewBox.w || !viewBox.h) return 1;
 		const pad = 32;
@@ -114,26 +144,79 @@
 		hqOut = null;
 		compareLiveOut = null;
 		compareHqOut = null;
+		origLive = null;
+		origHq = null;
 		frameCanvas = null;
 		previewCanvas = null;
+		frameW = 0;
+		frameH = 0;
 		showOriginal = false;
 		holdOriginal = false;
 		resetView();
 	}
 
+	function closeAspect(a: { width: number; height: number }, b: { width: number; height: number }): boolean {
+		return Math.abs(a.width / Math.max(1, a.height) - b.width / Math.max(1, b.height)) < 0.03;
+	}
+
+	function syncFrameSize(w: number, h: number) {
+		if (frameW !== w) frameW = w;
+		if (frameH !== h) frameH = h;
+	}
+
+	/** Pixel size of the applied crop at HQ density. */
+	function cropPixelSize(): { width: number; height: number } | null {
+		const src = hqPixels || livePixels;
+		if (!src || !cropMod || !isCropApplied(cropMod) || isIdentityCrop(cropMod)) return null;
+		const r = cropRect(cropMod);
+		return {
+			width: Math.max(1, Math.round(r.w * src.width)),
+			height: Math.max(1, Math.round(r.h * src.height))
+		};
+	}
+
+	/** HQ pixel density, but always the current grade's aspect — never the original frame. */
+	function scaleLiveFrame(live: HTMLCanvasElement): { w: number; h: number } {
+		if (livePixels && hqPixels) {
+			const s = hqPixels.width / Math.max(1, livePixels.width);
+			return { w: Math.max(1, Math.round(live.width * s)), h: Math.max(1, Math.round(live.height * s)) };
+		}
+		return { w: live.width, h: live.height };
+	}
+
 	function frameSize(): { w: number; h: number } | null {
+		const cropped = cropPixelSize();
+		const hqReady = hqOut && (!liveOut || closeAspect(hqOut, liveOut));
+		if (hqReady && hqOut && (!cropped || closeAspect(hqOut, cropped))) {
+			return { w: hqOut.width, h: hqOut.height };
+		}
+		if (liveOut && (!cropped || closeAspect(liveOut, cropped))) {
+			return scaleLiveFrame(liveOut);
+		}
+		if (cropped) return { w: cropped.width, h: cropped.height };
 		if (hqPixels) return { w: hqPixels.width, h: hqPixels.height };
 		if (shown) return { w: shown.width, h: shown.height };
 		return null;
+	}
+
+	function dropGrade() {
+		liveOut = null;
+		hqOut = null;
+		compareLiveOut = null;
+		compareHqOut = null;
+		origLive = null;
+		origHq = null;
+		frameCanvas = null;
 	}
 
 	function paintView() {
 		if (!viewEl || !shown) return;
 		const size = frameSize();
 		if (!size) return;
+		syncFrameSize(size.w, size.h);
 		if (viewEl.width !== size.w) viewEl.width = size.w;
 		if (viewEl.height !== size.h) viewEl.height = size.h;
-		viewEl.getContext('2d')?.drawImage(shown, 0, 0, size.w, size.h);
+		drawContained(viewEl.getContext('2d'), shown, size.w, size.h);
 	}
 
 	/** Same canvas is reused, so assignment alone may not redraw. */
@@ -141,6 +224,7 @@
 		const size = frameSize();
 		if (!size) {
 			previewCanvas = canvas;
+			syncFrameSize(canvas.width, canvas.height);
 			return;
 		}
 		previewCanvas =
@@ -148,6 +232,7 @@
 				? presentSplit(canvas, other, frameCanvas, size.w, size.h, compareSplit)
 				: presentOn(canvas, frameCanvas, size.w, size.h);
 		frameCanvas = previewCanvas;
+		syncFrameSize(previewCanvas.width, previewCanvas.height);
 		if (showOriginal || holdOriginal || !viewEl) return;
 		if (viewEl.width !== previewCanvas.width) viewEl.width = previewCanvas.width;
 		if (viewEl.height !== previewCanvas.height) viewEl.height = previewCanvas.height;
@@ -168,17 +253,25 @@
 		const otherLook = otherId ? findLook(otherId) : undefined;
 		const otherSnap = otherLook ? settingsFromLook(otherLook) : null;
 
+		const cropOnly = snap.stack.find((m) => m.type === 'crop' && m.enabled);
+		const cropSnap =
+			cropOnly && isCropApplied(cropOnly) && !isIdentityCrop(cropOnly)
+				? { strength: 1, stack: [cropOnly] }
+				: null;
+
 		let cancelled = false;
 		const raf = requestAnimationFrame(() => {
 			if (cancelled) return;
 			liveOut = gradePixels(live, snap, liveOut);
 			compareLiveOut = otherSnap ? gradePixels(live, otherSnap, compareLiveOut) : null;
+			origLive = cropSnap ? gradePixels(live, cropSnap, origLive) : null;
 			gradeGen += 1;
 		});
 		const timer = window.setTimeout(() => {
 			if (cancelled || !hq) return;
 			hqOut = gradePixels(hq, snap, hqOut);
 			compareHqOut = otherSnap ? gradePixels(hq, otherSnap, compareHqOut) : null;
+			origHq = cropSnap ? gradePixels(hq, cropSnap, origHq) : null;
 			gradeGen += 1;
 		}, 90);
 		return () => {
@@ -284,8 +377,27 @@
 		zoomAt(r.left + r.width / 2, r.top + r.height / 2, viewZoom * factor);
 	}
 
+	function commitCrop() {
+		if (!cropMod || isCropApplied(cropMod)) return;
+		applyCropMod(cropMod);
+		dropGrade();
+		const size = frameSize();
+		if (size) syncFrameSize(size.w, size.h);
+		resetView();
+	}
+
+	function resetCrop() {
+		if (!cropMod) return;
+		resetCropMod(cropMod);
+		dropGrade();
+		const size = frameSize();
+		if (size) syncFrameSize(size.w, size.h);
+		resetView();
+	}
+
 	function onFramePointerDown(e: PointerEvent) {
-		if (e.button !== 0 || viewZoom <= 1.001) return;
+		if (e.button !== 0) return;
+		if (viewZoom <= 1.001) return;
 		e.preventDefault();
 		try {
 			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -460,7 +572,8 @@
 	function addModifier() {
 		if (!addable.some((m) => m.type === addType)) return;
 		const next = newModifier(addType);
-		settings = { ...settings, stack: [...settings.stack, next] };
+		const stack = next.type === 'crop' ? [next, ...settings.stack] : [...settings.stack, next];
+		settings = { ...settings, stack };
 		expanded = { ...expanded, [next.id]: true };
 	}
 
@@ -714,6 +827,12 @@
 			{#if file}
 				<span class="tag">{file.name} · {lookName}</span>
 			{/if}
+			{#if cropMod}
+				<div class="crop-bar">
+					<button class="btn btn-primary" type="button" disabled={!cropEditing} onclick={commitCrop}>Crop</button>
+					<button class="btn" type="button" onclick={resetCrop}>Reset</button>
+				</div>
+			{/if}
 			{#if shown}
 				<div class="zoom-bar" role="group" aria-label="Preview zoom">
 					<button class="btn" type="button" disabled={viewZoom <= 0.25} onclick={() => nudgeZoom(1 / 1.25)} aria-label="Zoom out">−</button>
@@ -747,6 +866,9 @@
 					style="width:{imgW}px;height:{imgH}px;margin-left:{-imgW / 2}px;margin-top:{-imgH / 2}px;transform:translate({viewPanX}px,{viewPanY}px) scale({viewScale})"
 				>
 					<canvas bind:this={viewEl} draggable="false"></canvas>
+					{#if cropEditing && cropMod}
+						<CropGizmo mod={cropMod} scale={viewScale} />
+					{/if}
 					{#if gizmoMod && originalCanvas}
 						<BlurGizmo mod={gizmoMod} width={originalCanvas.width} height={originalCanvas.height} />
 					{/if}
@@ -799,6 +921,8 @@
 					onDragStart={(e) => onModDragStart(e, i)}
 					onDragEnd={onModDragEnd}
 					onScrub={(field) => onModScrub(_mod.id, field)}
+					onCrop={_mod.type === 'crop' ? commitCrop : undefined}
+					onResetCrop={_mod.type === 'crop' ? resetCrop : undefined}
 				/>
 			{/each}
 		</div>

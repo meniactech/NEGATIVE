@@ -91,8 +91,9 @@ export function presentSplit(
 }
 
 /**
- * Draw `source` into a canvas of fixed `width`×`height`. Live grades are
- * smaller than HQ; presenting them at the HQ size stops the preview jumping.
+ * Draw `source` into a canvas of `width`×`height`. Live grades are smaller
+ * than HQ; presenting them at the HQ size stops the preview jumping.
+ * Aspect is preserved — a crop is never stretched to the original frame.
  */
 export function presentOn(
 	source: HTMLCanvasElement,
@@ -107,8 +108,28 @@ export function presentOn(
 	}
 	const ctx = out.getContext('2d');
 	if (!ctx) throw new Error('No 2D canvas.');
+	drawContained(ctx, source, width, height);
+	return out;
+}
+
+export function drawContained(
+	ctx: CanvasRenderingContext2D | null,
+	source: HTMLCanvasElement,
+	width: number,
+	height: number
+): void {
+	if (!ctx) return;
 	ctx.imageSmoothingEnabled = true;
 	ctx.imageSmoothingQuality = 'high';
-	ctx.drawImage(source, 0, 0, width, height);
-	return out;
+	const srcA = source.width / Math.max(1, source.height);
+	const dstA = width / Math.max(1, height);
+	if (Math.abs(srcA - dstA) <= 0.02) {
+		ctx.drawImage(source, 0, 0, width, height);
+		return;
+	}
+	ctx.clearRect(0, 0, width, height);
+	const s = Math.min(width / source.width, height / source.height);
+	const dw = source.width * s;
+	const dh = source.height * s;
+	ctx.drawImage(source, (width - dw) / 2, (height - dh) / 2, dw, dh);
 }

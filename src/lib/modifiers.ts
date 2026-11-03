@@ -270,6 +270,12 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		]
 	},
 	{
+		type: 'crop',
+		name: 'Crop',
+		note: 'Rectangle on the photo',
+		sliders: []
+	},
+	{
 		type: 'halftone',
 		name: 'Halftone',
 		note: 'Newsprint, lines, magazine rosette, mezzotint',
@@ -392,6 +398,15 @@ export function newModifier(type: ModifierType): Modifier {
 			});
 		case 'halftone':
 			return blank(type, 0.82, { id, style: 0, radius: 0.34, angle: 45, tint: 0.22 });
+		case 'crop':
+			return blank(type, 1, {
+				id,
+				centerX: 0.1,
+				centerY: 0.1,
+				radius: 0.8,
+				softness: 0.8,
+				invert: 0
+			});
 	}
 }
 

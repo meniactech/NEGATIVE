@@ -11,12 +11,12 @@ NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to yo
 - Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
 - Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process.
 - **Mine**: save, rename, duplicate, delete, **export** and **import** your own looks. They live in this browser (`localStorage`); the JSON file is for backup or another machine.
-- Stack modifiers (only stacked effects run): white balance, saturation, brightness, **exposure**, contrast, **clarity**, fade, tone, vignette, grain, black & white, split tone, radial / linear blur, border, light leak, **halation**, **bloom**, **dust & scratches**, **date stamp**, **chromatic smear**, **coffee stain**, **halftone**.
+- Stack modifiers (only stacked effects run): white balance, saturation, brightness, **exposure**, contrast, **clarity**, fade, tone, vignette, grain, black & white, split tone, radial / linear blur, **crop**, border, light leak, **halation**, **bloom**, **dust & scratches**, **date stamp**, **chromatic smear**, **coffee stain**, **halftone**.
 - Grain has a Color slider (luma → chroma) and a Seed. Black & white can use Luma / Red / Orange / Yellow / Green filters. Light leak, dust and coffee also have a seed; folder batch mixes that seed with each filename so grain, leaks, dust and stains vary per photo.
 - Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
 - Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
 - Light leak fogs the frame like light hit the film: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
-- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges. Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them. Halftone is **Newsprint**, **Line screen**, **Magazine** (CMYK rosette) or **Mezzotint** (velvet rocker grain); Pitch is cell size, Ink is black → warm pulp.
+- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges. Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them. Halftone is **Newsprint**, **Line screen**, **Magazine** (CMYK rosette) or **Mezzotint** (velvet rocker grain); Pitch is cell size, Ink is black → warm pulp. Crop is a rectangle on the photo — drag the box or its handles, then **Crop**. **Reset** returns to the full frame.
 - Compare any look with a vertical split. Hold **Original** or press **Space** to peek at the ungraded photo.
 - Export the current photo, or apply the current stack to a folder. Originals are never overwritten.
 - Scroll the preview to zoom, drag to pan when zoomed. The percentage (or double-click) fits the whole photo.
@@ -78,7 +78,7 @@ PORT=8084 HOST=127.0.0.1 node build
 
 | Path | Role |
 |---|---|
-| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; blur, border, leak, glow, dust, stamp, chroma, coffee, halftone and clarity are whole-buffer passes. |
+| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; crop, blur, border, leak, glow, dust, stamp, chroma, coffee, halftone and clarity are whole-buffer passes. |
 | `src/lib/blur.ts` | Masked gaussian-ish blur (radial disc / linear band) plus `softBlur`. |
 | `src/lib/border.ts` | Print / Polaroid / film rebate (photo scaled into the frame). |
 | `src/lib/leak.ts` | Analog light leak (edge / corner / streak, screen-blended). |
@@ -88,6 +88,7 @@ PORT=8084 HOST=127.0.0.1 node build
 | `src/lib/chroma.ts` | Lateral chromatic smear. |
 | `src/lib/coffee.ts` | Mug rings and coffee spills. |
 | `src/lib/halftone.ts` | Newsprint, line screen, CMYK magazine rosette, mezzotint. |
+| `src/lib/crop.ts` | Source crop rectangle (applied with Crop, cleared with Reset). |
 | `src/lib/clarity.ts` | Midtone unsharp. |
 | `src/lib/modifiers.ts` | Catalogue of addable effects (labels, defaults). |
 | `src/lib/presets.ts` | Built-in named stacks. Clicking one copies that stack into the editor. |
