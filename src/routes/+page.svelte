@@ -705,6 +705,7 @@
 						Split
 						<input type="range" min="0" max="1" step="0.01" bind:value={compareSplit} />
 					</label>
+					<button class="btn" type="button" onclick={() => (compareId = '')}>Exit Compare</button>
 				{/if}
 			</div>
 			<button class="btn btn-primary" type="button" disabled={!file || busy} onclick={exportThis}>Export this photo</button>
