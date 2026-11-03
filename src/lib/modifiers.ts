@@ -268,6 +268,21 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 			{ value: 1, label: 'Spills' },
 			{ value: 2, label: 'Both' }
 		]
+	},
+	{
+		type: 'halftone',
+		name: 'Halftone',
+		note: 'Newsprint dots or engraved lines',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'radius', label: 'Pitch', min: 0, max: 1 },
+			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 },
+			{ field: 'tint', label: 'Ink', min: 0, max: 1 }
+		],
+		styles: [
+			{ value: 0, label: 'Newsprint' },
+			{ value: 1, label: 'Line screen' }
+		]
 	}
 ];
 
@@ -373,6 +388,8 @@ export function newModifier(type: ModifierType): Modifier {
 				softness: 0.32,
 				seed: 0.28
 			});
+		case 'halftone':
+			return blank(type, 0.82, { id, style: 0, radius: 0.34, angle: 45, tint: 0.22 });
 	}
 }
 

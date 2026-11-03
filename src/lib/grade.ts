@@ -2,7 +2,7 @@
  * Pixel-grade engine for NEGATIVE.
  *
  * Applies `settings.stack` in order. Point effects run per pixel; blur,
- * border, leak, glow, dust, stamp, chroma, coffee and clarity are whole-buffer
+ * border, leak, glow, dust, stamp, chroma, coffee, halftone and clarity are whole-buffer
  * passes. Unused effects are simply not on the stack.
  *
  * This file has no DOM and no Node APIs. Preview, export and batch all
@@ -20,6 +20,7 @@ import { applyClarity, isClarityType } from './clarity';
 import { applyCoffee, isCoffeeType } from './coffee';
 import { applyDust, isDustType } from './dust';
 import { applyGlow, isGlowType } from './glow';
+import { applyHalftone, isHalftoneType } from './halftone';
 import { mixSeed } from './hash';
 import { applyLightLeak, isLeakType } from './leak';
 import { applyStamp, isStampType } from './stamp';
@@ -225,7 +226,8 @@ function isSpatialType(type: Modifier['type']): boolean {
 		isStampType(type) ||
 		isChromaType(type) ||
 		isClarityType(type) ||
-		isCoffeeType(type)
+		isCoffeeType(type) ||
+		isHalftoneType(type)
 	);
 }
 
@@ -288,6 +290,9 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 			i++;
 		} else if (isCoffeeType(t)) {
 			work = applyCoffee(work, active[i], batchKey);
+			i++;
+		} else if (isHalftoneType(t)) {
+			work = applyHalftone(work, active[i]);
 			i++;
 		} else {
 			const run: Modifier[] = [];
