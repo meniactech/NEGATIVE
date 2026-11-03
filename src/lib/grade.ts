@@ -2,8 +2,8 @@
  * Pixel-grade engine for NEGATIVE.
  *
  * Applies `settings.stack` in order. Point effects run per pixel; blur,
- * border and light leak are whole-buffer passes. Unused effects are simply
- * not on the stack.
+ * border, leak, glow, dust, stamp, chroma and clarity are whole-buffer
+ * passes. Unused effects are simply not on the stack.
  *
  * This file has no DOM and no Node APIs. Preview, export and batch all
  * call `gradeRgba` with the same settings object.
@@ -15,7 +15,13 @@
  */
 import { applyBorder, isBorderType } from './border';
 import { applyMaskedBlur, isBlurType } from './blur';
+import { applyChroma, isChromaType } from './chroma';
+import { applyClarity, isClarityType } from './clarity';
+import { applyDust, isDustType } from './dust';
+import { applyGlow, isGlowType } from './glow';
+import { mixSeed } from './hash';
 import { applyLightLeak, isLeakType } from './leak';
+import { applyStamp, isStampType } from './stamp';
 import type { GradeSettings, Modifier, Rgb } from './types';
 
 export type RgbaBuffer = {
@@ -69,18 +75,20 @@ function vigMap(width: number, height: number, amount: number): Float32Array {
 }
 
 /** Run a stretch of per-pixel modifiers on one buffer. Returns a new buffer. */
-function applyPointRun(src: RgbaBuffer, mods: Modifier[]): RgbaBuffer {
+function applyPointRun(src: RgbaBuffer, mods: Modifier[], batchKey?: string): RgbaBuffer {
 	const { width, height, data } = src;
 	const out = new Uint8ClampedArray(data.length);
 
 	let vignette: Float32Array | null = null;
 	let grainScale = 1;
 	let grainSeed = 11;
+	let grainChroma = 0;
 	for (const m of mods) {
 		if (m.type === 'vignette') vignette = vigMap(width, height, m.amount);
 		if (m.type === 'grain') {
 			grainScale = Math.max(1, Math.min(width, height) / 1100);
-			grainSeed = 11 + Math.round(m.amount * 100);
+			grainSeed = 11 + mixSeed(m.seed, batchKey);
+			grainChroma = clamp01(m.tint);
 		}
 	}
 
@@ -114,6 +122,13 @@ function applyPointRun(src: RgbaBuffer, mods: Modifier[]): RgbaBuffer {
 						r = clamp01(r + lift);
 						g = clamp01(g + lift);
 						b = clamp01(b + lift);
+						break;
+					}
+					case 'exposure': {
+						const gain = 2 ** mod.amount;
+						r = clamp01(r * gain);
+						g = clamp01(g * gain);
+						b = clamp01(b * gain);
 						break;
 					}
 					case 'contrast': {
@@ -150,15 +165,23 @@ function applyPointRun(src: RgbaBuffer, mods: Modifier[]): RgbaBuffer {
 						const gx = Math.floor(x / grainScale);
 						const gy = Math.floor(y / grainScale);
 						const n = hash2(gx, gy, grainSeed) - 0.5;
+						const nr = hash2(gx, gy, grainSeed + 17) - 0.5;
+						const ng = hash2(gx, gy, grainSeed + 29) - 0.5;
+						const nb = hash2(gx, gy, grainSeed + 41) - 0.5;
 						const yv = luma(r, g, b);
 						const gain = mod.amount * 0.18 * (1.15 - yv * 0.7);
-						r = clamp01(r + n * gain);
-						g = clamp01(g + n * gain * 0.96);
-						b = clamp01(b + n * gain * 0.9);
+						const ch = grainChroma;
+						r = clamp01(r + (n * (1 - ch) + nr * ch) * gain);
+						g = clamp01(g + (n * (1 - ch) + ng * ch) * gain * 0.96);
+						b = clamp01(b + (n * (1 - ch) + nb * ch) * gain * 0.9);
 						break;
 					}
 					case 'bw': {
-						const yv = luma(r, g, b);
+						const filt = Math.max(0, Math.min(4, Math.round(mod.style)));
+						const wr = filt === 1 ? 0.82 : filt === 2 ? 0.58 : filt === 3 ? 0.42 : filt === 4 ? 0.12 : 0.2126;
+						const wg = filt === 1 ? 0.14 : filt === 2 ? 0.38 : filt === 3 ? 0.5 : filt === 4 ? 0.78 : 0.7152;
+						const wb = filt === 1 ? 0.04 : filt === 2 ? 0.04 : filt === 3 ? 0.08 : filt === 4 ? 0.1 : 0.0722;
+						const yv = wr * r + wg * g + wb * b;
 						r = lerp(r, yv, mod.amount);
 						g = lerp(g, yv, mod.amount);
 						b = lerp(b, yv, mod.amount);
@@ -191,6 +214,19 @@ function applyPointRun(src: RgbaBuffer, mods: Modifier[]): RgbaBuffer {
 	return { data: out, width, height };
 }
 
+function isSpatialType(type: Modifier['type']): boolean {
+	return (
+		isBlurType(type) ||
+		isBorderType(type) ||
+		isLeakType(type) ||
+		isGlowType(type) ||
+		isDustType(type) ||
+		isStampType(type) ||
+		isChromaType(type) ||
+		isClarityType(type)
+	);
+}
+
 function mixStrength(src: RgbaBuffer, graded: RgbaBuffer, strength: number): RgbaBuffer {
 	const { width, height, data } = src;
 	const out = new Uint8ClampedArray(data.length);
@@ -220,6 +256,7 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 		height: src.height
 	};
 
+	const batchKey = settings.batchKey;
 	let i = 0;
 	while (i < active.length) {
 		const t = active[i].type;
@@ -230,20 +267,30 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 			work = applyBorder(work, active[i]);
 			i++;
 		} else if (isLeakType(t)) {
-			work = applyLightLeak(work, active[i]);
+			work = applyLightLeak(work, active[i], batchKey);
+			i++;
+		} else if (isGlowType(t)) {
+			work = applyGlow(work, active[i]);
+			i++;
+		} else if (isDustType(t)) {
+			work = applyDust(work, active[i], batchKey);
+			i++;
+		} else if (isStampType(t)) {
+			work = applyStamp(work, active[i]);
+			i++;
+		} else if (isChromaType(t)) {
+			work = applyChroma(work, active[i]);
+			i++;
+		} else if (isClarityType(t)) {
+			work = applyClarity(work, active[i]);
 			i++;
 		} else {
 			const run: Modifier[] = [];
-			while (
-				i < active.length &&
-				!isBlurType(active[i].type) &&
-				!isBorderType(active[i].type) &&
-				!isLeakType(active[i].type)
-			) {
+			while (i < active.length && !isSpatialType(active[i].type)) {
 				run.push(active[i]);
 				i++;
 			}
-			work = applyPointRun(work, run);
+			work = applyPointRun(work, run, batchKey);
 		}
 	}
 

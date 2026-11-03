@@ -201,7 +201,8 @@ button {
 }
 
 .mine-bar .btn {
-	flex: 1;
+	position: relative;
+	flex: 1 1 4.5rem;
 }
 
 .look-card {
@@ -325,6 +326,30 @@ button {
 
 .blur-gizmo .gizmo-stroke .gizmo-dot {
 	fill: var(--amber);
+}
+
+.compare-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.compare-bar .add-select {
+	width: auto;
+	min-width: 7.5rem;
+}
+
+.compare-split {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--ink-dim);
+	font-size: 0.72rem;
+}
+
+.compare-split input[type='range'] {
+	width: 5.5rem;
+	accent-color: var(--amber);
 }
 
 .zoom-bar {

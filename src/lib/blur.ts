@@ -72,7 +72,7 @@ function boxPass(
 }
 
 /** Three box blurs ≈ a gaussian. Radius is in pixels. */
-function softBlur(src: Uint8ClampedArray, w: number, h: number, radius: number): Uint8ClampedArray {
+export function softBlur(src: Uint8ClampedArray, w: number, h: number, radius: number): Uint8ClampedArray {
 	const cap = Math.max(1, Math.floor((Math.min(w, h) - 1) / 2));
 	const r = Math.min(cap, Math.max(1, Math.round(radius)));
 	let cur = src;

@@ -86,6 +86,19 @@
 				</select>
 			</div>
 		{/if}
+		{#if info.text}
+			<div class="mod-style">
+				<label for={mod.id + '-label'}>Date</label>
+				<input
+					id={mod.id + '-label'}
+					class="mod-style-select"
+					type="text"
+					maxlength="14"
+					bind:value={mod.label}
+					spellcheck="false"
+				/>
+			</div>
+		{/if}
 		{#each info.sliders as s (s.field)}
 			<Slider
 				id={mod.id + '-' + s.field}

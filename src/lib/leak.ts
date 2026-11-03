@@ -5,6 +5,7 @@
  * edge is not a clean gradient), then screen-blended with a yellow→red colour
  * that runs hotter in the core.
  */
+import { mixSeed } from './hash';
 import type { Modifier } from './types';
 
 type RgbaBuffer = { data: Uint8ClampedArray; width: number; height: number };
@@ -81,7 +82,7 @@ function falloff(dist: number, reach: number, softness: number): number {
 /**
  * Paint a light leak onto a copy of `src`. `src` is not mutated.
  */
-export function applyLightLeak(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
+export function applyLightLeak(src: RgbaBuffer, mod: Modifier, batchKey?: string): RgbaBuffer {
 	const { width: w, height: h, data } = src;
 	const out = new Uint8ClampedArray(data.length);
 	const amount = clamp01(mod.amount);
@@ -107,7 +108,7 @@ export function applyLightLeak(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 	const minSide = Math.min(w, h);
 	const reach = spread * minSide;
 	const streakReach = reach * 0.42;
-	const seed = 29 + Math.round(cx * 40 + cy * 17 + style * 8);
+	const seed = 29 + Math.round(cx * 40 + cy * 17 + style * 8) + mixSeed(mod.seed, batchKey);
 	const warpAmp = reach * (0.18 + soft * 0.22);
 	const iw = 1 / Math.max(1, w - 1);
 	const ih = 1 / Math.max(1, h - 1);

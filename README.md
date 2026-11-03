@@ -10,11 +10,14 @@ NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to yo
 
 - Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
 - Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process.
-- **Mine**: save, rename, duplicate and delete your own looks. They live in this browser (`localStorage`), not in a file.
-- Stack modifiers (only stacked effects run): white balance, saturation, brightness, contrast, fade, tone, vignette, grain, black & white, split tone, **radial blur**, **linear blur**, **border**, **light leak**.
+- **Mine**: save, rename, duplicate, delete, **export** and **import** your own looks. They live in this browser (`localStorage`); the JSON file is for backup or another machine.
+- Stack modifiers (only stacked effects run): white balance, saturation, brightness, **exposure**, contrast, **clarity**, fade, tone, vignette, grain, black & white, split tone, radial / linear blur, border, light leak, **halation**, **bloom**, **dust & scratches**, **date stamp**, **chromatic smear**.
+- Grain has a Color slider (luma → chroma) and a Seed. Black & white can use Luma / Red / Orange / Yellow / Green filters. Light leak and dust also have a seed; folder batch mixes that seed with each filename so grain, leaks and dust vary per photo.
 - Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
 - Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
 - Light leak fogs the frame like light hit the film: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
+- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges.
+- Compare any look with a vertical split. Hold **Original** or press **Space** to peek at the ungraded photo.
 - Export the current photo, or apply the current stack to a folder. Originals are never overwritten.
 - Scroll the preview to zoom, drag to pan when zoomed. The percentage (or double-click) fits the whole photo.
 
@@ -75,13 +78,18 @@ PORT=8084 HOST=127.0.0.1 node build
 
 | Path | Role |
 |---|---|
-| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; blur, border and light leak are whole-buffer passes. |
-| `src/lib/blur.ts` | Masked gaussian-ish blur (radial disc / linear band). |
+| `src/lib/grade.ts` | Pixel engine. Point effects per pixel; blur, border, leak, glow, dust, stamp, chroma and clarity are whole-buffer passes. |
+| `src/lib/blur.ts` | Masked gaussian-ish blur (radial disc / linear band) plus `softBlur`. |
 | `src/lib/border.ts` | Print / Polaroid / film rebate (photo scaled into the frame). |
 | `src/lib/leak.ts` | Analog light leak (edge / corner / streak, screen-blended). |
+| `src/lib/glow.ts` | Halation and bloom (highlight extract + soft blur). |
+| `src/lib/dust.ts` | Specks and hair scratches, seeded per photo in a batch. |
+| `src/lib/stamp.ts` | 7-segment date stamp. |
+| `src/lib/chroma.ts` | Lateral chromatic smear. |
+| `src/lib/clarity.ts` | Midtone unsharp. |
 | `src/lib/modifiers.ts` | Catalogue of addable effects (labels, defaults). |
 | `src/lib/presets.ts` | Built-in named stacks. Clicking one copies that stack into the editor. |
-| `src/lib/userLooks.ts` | Save / load user looks in `localStorage`. |
+| `src/lib/userLooks.ts` | Save / load / import / export user looks in `localStorage`. |
 | `src/lib/types.ts` | `Modifier`, `GradeSettings`, `Look`. |
 | `src/lib/preview.ts` | Downscale + live/HQ canvas preview. |
 | `src/lib/server/` | sharp decode/encode, folder walk, localhost check, settings parse. |

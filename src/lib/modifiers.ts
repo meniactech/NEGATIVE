@@ -18,7 +18,8 @@ export type SliderSpec = {
 		| 'radius'
 		| 'softness'
 		| 'angle'
-		| 'invert';
+		| 'invert'
+		| 'seed';
 	label: string;
 	min: number;
 	max: number;
@@ -38,8 +39,10 @@ export type ModifierInfo = {
 	sliders: SliderSpec[];
 	/** Extra RGB sliders (split tone). */
 	rgb?: boolean;
-	/** Discrete look picker (border). */
+	/** Discrete look picker (border / leak / stamp / B&W). */
 	styles?: StyleChoice[];
+	/** Free text (date stamp). */
+	text?: boolean;
 };
 
 export const MODIFIER_INFO: ModifierInfo[] = [
@@ -65,10 +68,22 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		sliders: [{ field: 'amount', label: 'Brightness', min: -0.5, max: 0.5 }]
 	},
 	{
+		type: 'exposure',
+		name: 'Exposure',
+		note: 'Stops. 0 is unchanged',
+		sliders: [{ field: 'amount', label: 'Exposure', min: -1.5, max: 1.5 }]
+	},
+	{
 		type: 'contrast',
 		name: 'Contrast',
 		note: '0 is unchanged',
 		sliders: [{ field: 'amount', label: 'Contrast', min: -0.4, max: 0.8 }]
+	},
+	{
+		type: 'clarity',
+		name: 'Clarity',
+		note: 'Midtone structure',
+		sliders: [{ field: 'amount', label: 'Clarity', min: -0.4, max: 0.7 }]
 	},
 	{
 		type: 'fade',
@@ -95,13 +110,24 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		type: 'grain',
 		name: 'Grain',
 		note: 'Film grain',
-		sliders: [{ field: 'amount', label: 'Grain', min: 0, max: 1 }]
+		sliders: [
+			{ field: 'amount', label: 'Grain', min: 0, max: 1 },
+			{ field: 'tint', label: 'Color', min: 0, max: 1 },
+			{ field: 'seed', label: 'Seed', min: 0, max: 1 }
+		]
 	},
 	{
 		type: 'bw',
 		name: 'Black & white',
-		note: 'Mix toward luma',
-		sliders: [{ field: 'amount', label: 'Amount', min: 0, max: 1 }]
+		note: 'Mix toward a filter',
+		sliders: [{ field: 'amount', label: 'Amount', min: 0, max: 1 }],
+		styles: [
+			{ value: 0, label: 'Luma' },
+			{ value: 1, label: 'Red' },
+			{ value: 2, label: 'Orange' },
+			{ value: 3, label: 'Yellow' },
+			{ value: 4, label: 'Green' }
+		]
 	},
 	{
 		type: 'split',
@@ -163,12 +189,65 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 			{ field: 'centerY', label: 'Center Y', min: 0, max: 1 },
 			{ field: 'radius', label: 'Spread', min: 0.08, max: 1 },
 			{ field: 'softness', label: 'Softness', min: 0.1, max: 1 },
-			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 }
+			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 },
+			{ field: 'seed', label: 'Seed', min: 0, max: 1 }
 		],
 		styles: [
 			{ value: 0, label: 'Edge' },
 			{ value: 1, label: 'Corner' },
 			{ value: 2, label: 'Streak' }
+		]
+	},
+	{
+		type: 'halation',
+		name: 'Halation',
+		note: 'Red glow off bright points',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'tint', label: 'Color', min: 0, max: 1 },
+			{ field: 'radius', label: 'Threshold', min: 0, max: 1 },
+			{ field: 'softness', label: 'Spread', min: 0.1, max: 1 }
+		]
+	},
+	{
+		type: 'bloom',
+		name: 'Bloom',
+		note: 'Soft highlight diffusion',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'radius', label: 'Threshold', min: 0, max: 1 },
+			{ field: 'softness', label: 'Spread', min: 0.1, max: 1 }
+		]
+	},
+	{
+		type: 'dust',
+		name: 'Dust & scratches',
+		note: 'Specks and hairs',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'seed', label: 'Seed', min: 0, max: 1 }
+		]
+	},
+	{
+		type: 'stamp',
+		name: 'Date stamp',
+		note: 'Orange LCD date',
+		sliders: [{ field: 'amount', label: 'Opacity', min: 0, max: 1 }],
+		styles: [
+			{ value: 0, label: 'Top left' },
+			{ value: 1, label: 'Top right' },
+			{ value: 2, label: 'Bottom right' },
+			{ value: 3, label: 'Bottom left' }
+		],
+		text: true
+	},
+	{
+		type: 'chroma',
+		name: 'Chromatic smear',
+		note: 'R / B offset, stronger at edges',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 }
 		]
 	}
 ];
@@ -198,7 +277,9 @@ function blank(type: ModifierType, amount: number, extra: Partial<Modifier> = {}
 		softness: extra.softness ?? 0.4,
 		angle: extra.angle ?? 0,
 		invert: extra.invert ?? 0,
-		style: extra.style ?? 0
+		style: extra.style ?? 0,
+		seed: extra.seed ?? 0,
+		label: extra.label ?? ''
 	};
 }
 
@@ -212,8 +293,12 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 1.1, { id });
 		case 'brightness':
 			return blank(type, 0.08, { id });
+		case 'exposure':
+			return blank(type, 0.15, { id });
 		case 'contrast':
 			return blank(type, 0.18, { id });
+		case 'clarity':
+			return blank(type, 0.22, { id });
 		case 'fade':
 			return blank(type, 0.2, { id });
 		case 'tone':
@@ -221,9 +306,9 @@ export function newModifier(type: ModifierType): Modifier {
 		case 'vignette':
 			return blank(type, 0.5, { id });
 		case 'grain':
-			return blank(type, 0.28, { id });
+			return blank(type, 0.28, { id, tint: 0.2, seed: 0.15 });
 		case 'bw':
-			return blank(type, 1, { id });
+			return blank(type, 1, { id, style: 0 });
 		case 'split':
 			return blank(type, 1, {
 				id,
@@ -245,8 +330,19 @@ export function newModifier(type: ModifierType): Modifier {
 				centerY: 0.4,
 				radius: 0.4,
 				softness: 0.55,
-				angle: 12
+				angle: 12,
+				seed: 0.2
 			});
+		case 'halation':
+			return blank(type, 0.45, { id, tint: 0.55, radius: 0.42, softness: 0.55 });
+		case 'bloom':
+			return blank(type, 0.35, { id, radius: 0.35, softness: 0.5 });
+		case 'dust':
+			return blank(type, 0.35, { id, seed: 0.4 });
+		case 'stamp':
+			return blank(type, 0.85, { id, style: 2, label: '94 08 12' });
+		case 'chroma':
+			return blank(type, 0.28, { id, angle: 0 });
 	}
 }
 
@@ -258,7 +354,8 @@ export function settingsFromLook(look: Look): GradeSettings {
 			...m,
 			id: m.type + '-' + Math.random().toString(36).slice(2, 8),
 			splitShadows: [...m.splitShadows] as Rgb,
-			splitHighlights: [...m.splitHighlights] as Rgb
+			splitHighlights: [...m.splitHighlights] as Rgb,
+			label: m.label || ''
 		}))
 	};
 }
@@ -272,7 +369,9 @@ export const M = {
 	wb: (temperature: number, tint: number) => blank('wb', temperature, { tint }),
 	saturation: (n: number) => blank('saturation', n),
 	brightness: (n: number) => blank('brightness', n),
+	exposure: (n: number) => blank('exposure', n),
 	contrast: (n: number) => blank('contrast', n),
+	clarity: (n: number) => blank('clarity', n),
 	fade: (n: number) => blank('fade', n),
 	tone: (shadows: number, highlights: number) => blank('tone', 0, { shadows, highlights }),
 	vignette: (n: number) => blank('vignette', n),

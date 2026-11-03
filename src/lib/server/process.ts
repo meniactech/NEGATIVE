@@ -15,7 +15,7 @@ export async function gradeFile(inputPath: string, outputPath: string, settings:
 	}
 	const graded = gradeRgba(
 		{ data: new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength), width: info.width, height: info.height },
-		settings
+		{ ...settings, batchKey: inputPath }
 	);
 	let out = sharp(Buffer.from(graded.data), {
 		raw: { width: graded.width, height: graded.height, channels: 4 }

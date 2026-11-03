@@ -70,6 +70,26 @@ export function gradePixels(
 	return out;
 }
 
+/** Composite two grades with a vertical split at `t` (0..1). Left is current. */
+export function presentSplit(
+	left: HTMLCanvasElement,
+	right: HTMLCanvasElement,
+	dest: HTMLCanvasElement | null,
+	width: number,
+	height: number,
+	t: number
+): HTMLCanvasElement {
+	const out = presentOn(left, dest, width, height);
+	const other = presentOn(right, null, width, height);
+	const ctx = out.getContext('2d');
+	if (!ctx) throw new Error('No 2D canvas.');
+	const x = Math.max(0, Math.min(width, Math.round(width * t)));
+	if (x < width) ctx.drawImage(other, x, 0, width - x, height, x, 0, width - x, height);
+	ctx.fillStyle = '#e8a15a';
+	ctx.fillRect(Math.max(0, x - 1), 0, 2, height);
+	return out;
+}
+
 /**
  * Draw `source` into a canvas of fixed `width`×`height`. Live grades are
  * smaller than HQ; presenting them at the HQ size stops the preview jumping.

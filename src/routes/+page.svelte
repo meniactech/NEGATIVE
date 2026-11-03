@@ -13,22 +13,31 @@
 	import {
 		lookFromSettings,
 		loadUserLooks,
+		looksFromJson,
+		looksToJson,
+		newLookId,
 		persistUserLooks,
 		uniqueLookName
 	} from '$lib/userLooks';
-	import { PREVIEW_HQ, PREVIEW_LIVE, gradePixels, loadImage, presentOn, rasterize, readPixels } from '$lib/preview';
+	import { PREVIEW_HQ, PREVIEW_LIVE, gradePixels, loadImage, presentOn, presentSplit, rasterize, readPixels } from '$lib/preview';
 
 	let file = $state<File | null>(null);
 	let livePixels: ImageData | null = null;
 	let hqPixels: ImageData | null = null;
 	let liveOut: HTMLCanvasElement | null = null;
 	let hqOut: HTMLCanvasElement | null = null;
+	let compareLiveOut: HTMLCanvasElement | null = null;
+	let compareHqOut: HTMLCanvasElement | null = null;
 	let frameCanvas: HTMLCanvasElement | null = null;
 	let originalCanvas = $state<HTMLCanvasElement | null>(null);
 	let previewCanvas = $state<HTMLCanvasElement | null>(null);
 	let viewEl = $state<HTMLCanvasElement | null>(null);
 	let stageViewEl = $state<HTMLElement | null>(null);
 	let showOriginal = $state(false);
+	let holdOriginal = $state(false);
+	let compareId = $state('');
+	let compareSplit = $state(0.5);
+	let gradeGen = $state(0);
 	/** 1 = whole photo fits in the stage. */
 	let viewZoom = $state(1);
 	let viewPanX = $state(0);
@@ -75,7 +84,8 @@
 		void m.angle;
 		return m;
 	});
-	const shown = $derived(showOriginal ? originalCanvas : previewCanvas);
+	const shown = $derived(showOriginal || holdOriginal ? originalCanvas : previewCanvas);
+	const compareLooks = $derived([...LOOKS, ...userLooks]);
 	const usedTypes = $derived(new Set(settings.stack.map((m) => m.type)));
 	const addable = $derived(MODIFIER_INFO.filter((m) => !usedTypes.has(m.type)));
 	const imgW = $derived(originalCanvas?.width || shown?.width || 0);
@@ -100,9 +110,12 @@
 		originalCanvas = hq;
 		liveOut = null;
 		hqOut = null;
+		compareLiveOut = null;
+		compareHqOut = null;
 		frameCanvas = null;
 		previewCanvas = null;
 		showOriginal = false;
+		holdOriginal = false;
 		resetView();
 	}
 
@@ -122,11 +135,18 @@
 	}
 
 	/** Same canvas is reused, so assignment alone may not redraw. */
-	function setPreview(canvas: HTMLCanvasElement) {
+	function setPreview(canvas: HTMLCanvasElement, other: HTMLCanvasElement | null = null) {
 		const size = frameSize();
-		previewCanvas = size ? presentOn(canvas, frameCanvas, size.w, size.h) : canvas;
+		if (!size) {
+			previewCanvas = canvas;
+			return;
+		}
+		previewCanvas =
+			compareId && other
+				? presentSplit(canvas, other, frameCanvas, size.w, size.h, compareSplit)
+				: presentOn(canvas, frameCanvas, size.w, size.h);
 		frameCanvas = previewCanvas;
-		if (showOriginal || !viewEl) return;
+		if (showOriginal || holdOriginal || !viewEl) return;
 		if (viewEl.width !== previewCanvas.width) viewEl.width = previewCanvas.width;
 		if (viewEl.height !== previewCanvas.height) viewEl.height = previewCanvas.height;
 		viewEl.getContext('2d')?.drawImage(previewCanvas, 0, 0);
@@ -140,25 +160,39 @@
 		const snap = JSON.parse(JSON.stringify(settings)) as GradeSettings;
 		const live = livePixels;
 		const hq = hqPixels;
+		const otherId = compareId;
 		void originalCanvas;
 		if (!live) return;
+		const otherLook = otherId ? findLook(otherId) : undefined;
+		const otherSnap = otherLook ? settingsFromLook(otherLook) : null;
 
 		let cancelled = false;
 		const raf = requestAnimationFrame(() => {
 			if (cancelled) return;
 			liveOut = gradePixels(live, snap, liveOut);
-			setPreview(liveOut);
+			compareLiveOut = otherSnap ? gradePixels(live, otherSnap, compareLiveOut) : null;
+			gradeGen += 1;
 		});
 		const timer = window.setTimeout(() => {
 			if (cancelled || !hq) return;
 			hqOut = gradePixels(hq, snap, hqOut);
-			setPreview(hqOut);
+			compareHqOut = otherSnap ? gradePixels(hq, otherSnap, compareHqOut) : null;
+			gradeGen += 1;
 		}, 90);
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(raf);
 			clearTimeout(timer);
 		};
+	});
+
+	$effect(() => {
+		void gradeGen;
+		void compareSplit;
+		const current = hqOut || liveOut;
+		if (!current) return;
+		const other = compareId ? compareHqOut || compareLiveOut : null;
+		setPreview(current, other);
 	});
 
 	$effect(() => {
@@ -284,7 +318,35 @@
 
 	onMount(() => {
 		userLooks = loadUserLooks();
+		const down = (e: KeyboardEvent) => {
+			if (e.code !== 'Space' || e.repeat) return;
+			const t = e.target as HTMLElement | null;
+			if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+				return;
+			}
+			e.preventDefault();
+			holdOriginal = true;
+		};
+		const up = (e: KeyboardEvent) => {
+			if (e.code === 'Space') holdOriginal = false;
+		};
+		window.addEventListener('keydown', down);
+		window.addEventListener('keyup', up);
+		return () => {
+			window.removeEventListener('keydown', down);
+			window.removeEventListener('keyup', up);
+		};
 	});
+
+	function setHoldOriginal(on: boolean, e?: PointerEvent) {
+		holdOriginal = on;
+		if (!on || !e) return;
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			/* synthetic events may not support capture */
+		}
+	}
 
 	function findLook(id: string): Look | undefined {
 		return LOOKS.find((l) => l.id === id) || userLooks.find((l) => l.id === id);
@@ -346,6 +408,40 @@
 		userLooks = userLooks.map((l) => (l.id === id ? { ...l, name } : l));
 		if (selectedId === id) saveName = name;
 		persistUserLooks(userLooks);
+	}
+
+	function exportMine() {
+		if (!userLooks.length) return;
+		const blob = new Blob([looksToJson(userLooks)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'negative-looks.json';
+		a.click();
+		URL.revokeObjectURL(url);
+		statusErr = false;
+		status = 'Looks exported.';
+	}
+
+	async function importMine(next: File) {
+		try {
+			const incoming = looksFromJson(await next.text());
+			const merged = userLooks.slice();
+			for (const look of incoming) {
+				merged.push({
+					...look,
+					id: newLookId(),
+					name: uniqueLookName(merged, look.name)
+				});
+			}
+			userLooks = merged;
+			persistUserLooks(userLooks);
+			statusErr = false;
+			status = `Imported ${incoming.length} look${incoming.length === 1 ? '' : 's'}.`;
+		} catch (e) {
+			statusErr = true;
+			status = e instanceof Error ? e.message : 'Import failed.';
+		}
 	}
 
 	function deleteLook(id: string) {
@@ -516,6 +612,20 @@
 				{selectedIsMine ? 'Save' : 'Save as'}
 			</button>
 			<button class="btn" type="button" onclick={() => duplicateLook(selectedId)}>Copy</button>
+			<button class="btn" type="button" disabled={!userLooks.length} onclick={exportMine}>Export</button>
+			<label class="btn">
+				Import
+				<input
+					class="hidden-file"
+					type="file"
+					accept="application/json,.json"
+					onchange={(e) => {
+						const next = e.currentTarget.files?.[0];
+						e.currentTarget.value = '';
+						if (next) importMine(next);
+					}}
+				/>
+			</label>
 		</div>
 		{#each userLooks as item (item.id)}
 			<div class="look-card" class:is-on={item.id === selectedId}>
@@ -569,8 +679,33 @@
 				/>
 			</label>
 			<div class="toggle">
-				<button class="btn" class:is-on={!showOriginal} type="button" onclick={() => (showOriginal = false)}>Look</button>
-				<button class="btn" class:is-on={showOriginal} type="button" onclick={() => (showOriginal = true)}>Original</button>
+				<button class="btn" class:is-on={!showOriginal && !holdOriginal} type="button" onclick={() => (showOriginal = false)}>Look</button>
+				<button
+					class="btn"
+					class:is-on={showOriginal || holdOriginal}
+					type="button"
+					title="Hold or press Space to peek"
+					onpointerdown={(e) => {
+						if (e.button === 0) setHoldOriginal(true, e);
+					}}
+					onpointerup={() => setHoldOriginal(false)}
+					onpointercancel={() => setHoldOriginal(false)}
+					onclick={() => (showOriginal = true)}
+				>Original</button>
+			</div>
+			<div class="compare-bar">
+				<select class="add-select" bind:value={compareId} aria-label="Compare look">
+					<option value="">Compare</option>
+					{#each compareLooks as item (item.id)}
+						<option value={item.id}>{item.name}</option>
+					{/each}
+				</select>
+				{#if compareId}
+					<label class="compare-split">
+						Split
+						<input type="range" min="0" max="1" step="0.01" bind:value={compareSplit} />
+					</label>
+				{/if}
 			</div>
 			<button class="btn btn-primary" type="button" disabled={!file || busy} onclick={exportThis}>Export this photo</button>
 			{#if file}

@@ -13,7 +13,9 @@ export type ModifierType =
 	| 'wb'
 	| 'saturation'
 	| 'brightness'
+	| 'exposure'
 	| 'contrast'
+	| 'clarity'
 	| 'fade'
 	| 'tone'
 	| 'vignette'
@@ -23,7 +25,36 @@ export type ModifierType =
 	| 'blurRadial'
 	| 'blurLinear'
 	| 'border'
-	| 'leak';
+	| 'leak'
+	| 'halation'
+	| 'bloom'
+	| 'dust'
+	| 'stamp'
+	| 'chroma';
+
+export const MODIFIER_TYPES: ModifierType[] = [
+	'wb',
+	'saturation',
+	'brightness',
+	'exposure',
+	'contrast',
+	'clarity',
+	'fade',
+	'tone',
+	'vignette',
+	'grain',
+	'bw',
+	'split',
+	'blurRadial',
+	'blurLinear',
+	'border',
+	'leak',
+	'halation',
+	'bloom',
+	'dust',
+	'stamp',
+	'chroma'
+];
 
 /**
  * One effect on the stack. `amount` is the main slider; extra fields are
@@ -51,8 +82,12 @@ export type Modifier = {
 	angle: number;
 	/** Blur: 0 sharp-in-mask, 1 inverted (blur the focus region). */
 	invert: number;
-	/** Border: 0 print, 1 Polaroid, 2 film. Leak: 0 edge, 1 corner, 2 streak. */
+	/** Border / leak / stamp / B&W filter look. */
 	style: number;
+	/** Grain / leak / dust: phase. Mixed with `batchKey` on folder batch. */
+	seed: number;
+	/** Date stamp text (e.g. 94 08 12). */
+	label: string;
 };
 
 /** What preview / export / batch all consume. */
@@ -60,6 +95,8 @@ export type GradeSettings = {
 	/** 0 original … 1 full stack. */
 	strength: number;
 	stack: Modifier[];
+	/** Per-file key so grain / leak / dust differ across a batch. */
+	batchKey?: string;
 };
 
 /** A named snapshot of a stack. */

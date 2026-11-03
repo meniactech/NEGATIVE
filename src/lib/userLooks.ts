@@ -3,26 +3,9 @@
  * overwritten. Save / rename / duplicate / delete only touch this list.
  */
 import { infoFor, newModifier } from './modifiers';
-import type { GradeSettings, Look, Modifier, ModifierType, Rgb } from './types';
+import { MODIFIER_TYPES, type GradeSettings, type Look, type Modifier, type ModifierType, type Rgb } from './types';
 
 const KEY = 'negative.looks.v1';
-
-const TYPES: ModifierType[] = [
-	'wb',
-	'saturation',
-	'brightness',
-	'contrast',
-	'fade',
-	'tone',
-	'vignette',
-	'grain',
-	'bw',
-	'split',
-	'blurRadial',
-	'blurLinear',
-	'border',
-	'leak'
-];
 
 function asRgb(value: unknown, fallback: Rgb): Rgb {
 	if (!Array.isArray(value) || value.length < 3) return [...fallback] as Rgb;
@@ -41,7 +24,7 @@ function sanitizeMod(raw: unknown): Modifier | null {
 	if (!raw || typeof raw !== 'object') return null;
 	const o = raw as Record<string, unknown>;
 	const type = o.type as ModifierType;
-	if (!TYPES.includes(type)) return null;
+	if (!MODIFIER_TYPES.includes(type)) return null;
 	const base = newModifier(type);
 	return {
 		...base,
@@ -59,7 +42,9 @@ function sanitizeMod(raw: unknown): Modifier | null {
 		softness: clampNum(o.softness, base.softness),
 		angle: clampNum(o.angle, base.angle),
 		invert: clampNum(o.invert, base.invert),
-		style: clampNum(o.style, base.style)
+		style: clampNum(o.style, base.style),
+		seed: clampNum(o.seed, base.seed),
+		label: typeof o.label === 'string' ? o.label.slice(0, 24) : base.label
 	};
 }
 
@@ -129,7 +114,25 @@ export function lookFromSettings(name: string, settings: GradeSettings): Look {
 		stack: settings.stack.map((m) => ({
 			...m,
 			splitShadows: [...m.splitShadows] as Rgb,
-			splitHighlights: [...m.splitHighlights] as Rgb
+			splitHighlights: [...m.splitHighlights] as Rgb,
+			label: m.label || ''
 		}))
 	};
+}
+
+export function looksToJson(looks: Look[]): string {
+	return JSON.stringify({ looks }, null, 2);
+}
+
+export function looksFromJson(raw: string): Look[] {
+	const parsed = JSON.parse(raw);
+	const list = Array.isArray(parsed) ? parsed : parsed?.looks;
+	if (!Array.isArray(list)) throw new Error('No looks in that file.');
+	const out: Look[] = [];
+	for (const item of list) {
+		const look = sanitizeLook(item);
+		if (look) out.push(look);
+	}
+	if (!out.length) throw new Error('No valid looks in that file.');
+	return out;
 }

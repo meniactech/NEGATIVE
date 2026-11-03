@@ -4,24 +4,7 @@
  */
 import { error, type RequestEvent } from '@sveltejs/kit';
 import { newModifier } from '$lib/modifiers';
-import type { GradeSettings, Modifier, ModifierType, Rgb } from '$lib/types';
-
-const TYPES: ModifierType[] = [
-	'wb',
-	'saturation',
-	'brightness',
-	'contrast',
-	'fade',
-	'tone',
-	'vignette',
-	'grain',
-	'bw',
-	'split',
-	'blurRadial',
-	'blurLinear',
-	'border',
-	'leak'
-];
+import { MODIFIER_TYPES, type GradeSettings, type Modifier, type ModifierType, type Rgb } from '$lib/types';
 
 export function assertLocal(event: RequestEvent): void {
 	const addr = event.getClientAddress();
@@ -42,7 +25,7 @@ function rgb(v: unknown, fallback: Rgb): Rgb {
 function parseMod(raw: unknown, i: number): Modifier | null {
 	if (!raw || typeof raw !== 'object') return null;
 	const s = raw as Record<string, unknown>;
-	const type = TYPES.includes(s.type as ModifierType) ? (s.type as ModifierType) : null;
+	const type = MODIFIER_TYPES.includes(s.type as ModifierType) ? (s.type as ModifierType) : null;
 	if (!type) return null;
 	const base = newModifier(type);
 	return {
@@ -61,7 +44,9 @@ function parseMod(raw: unknown, i: number): Modifier | null {
 		softness: num(s.softness, base.softness),
 		angle: num(s.angle, base.angle),
 		invert: num(s.invert, base.invert),
-		style: num(s.style, base.style)
+		style: num(s.style, base.style),
+		seed: num(s.seed, base.seed),
+		label: typeof s.label === 'string' ? s.label.slice(0, 24) : base.label
 	};
 }
 
