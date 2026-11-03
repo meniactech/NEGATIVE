@@ -272,7 +272,7 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 	{
 		type: 'halftone',
 		name: 'Halftone',
-		note: 'Newsprint dots or engraved lines',
+		note: 'Newsprint, lines, magazine rosette, mezzotint',
 		sliders: [
 			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
 			{ field: 'radius', label: 'Pitch', min: 0, max: 1 },
@@ -281,7 +281,9 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		],
 		styles: [
 			{ value: 0, label: 'Newsprint' },
-			{ value: 1, label: 'Line screen' }
+			{ value: 1, label: 'Line screen' },
+			{ value: 2, label: 'Magazine' },
+			{ value: 3, label: 'Mezzotint' }
 		]
 	}
 ];

@@ -1,6 +1,6 @@
 /**
- * Print halftone: newsprint dots or an engraved line screen.
- * AM screening on luma, then ink on paper, mixed by amount.
+ * Print halftone: newsprint dots, engraved lines, a CMYK magazine rosette,
+ * or a jittered mezzotint. AM screening, then ink on paper, mixed by amount.
  */
 import type { Modifier } from './types';
 
@@ -28,6 +28,56 @@ function wrapCenter(v: number, cell: number): number {
 	return m - cell * 0.5;
 }
 
+function hash2(x: number, y: number, seed: number): number {
+	let n = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653);
+	n = Math.imul(n ^ (n >>> 13), 1274126177);
+	return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+
+function edge(dist: number, rad: number, feather: number): number {
+	const t = (rad - dist) / feather;
+	return t <= 0 ? 0 : t >= 1 ? 1 : smooth01(t);
+}
+
+function screenDot(x: number, y: number, angleDeg: number, cell: number, dark: number, feather: number): number {
+	const th = (angleDeg * Math.PI) / 180;
+	const cos = Math.cos(th);
+	const sin = Math.sin(th);
+	const sx = x * cos + y * sin;
+	const sy = -x * sin + y * cos;
+	const d = Math.hypot(wrapCenter(sx, cell), wrapCenter(sy, cell));
+	return edge(d, dark * cell * 0.56, feather);
+}
+
+function screenLine(x: number, y: number, angleDeg: number, cell: number, dark: number, feather: number): number {
+	const th = (angleDeg * Math.PI) / 180;
+	const sy = -x * Math.sin(th) + y * Math.cos(th);
+	return edge(Math.abs(wrapCenter(sy, cell)), dark * cell * 0.5, feather);
+}
+
+function mezzCover(x: number, y: number, cell: number, dark: number, feather: number): number {
+	const gx = Math.floor(x / cell);
+	const gy = Math.floor(y / cell);
+	let best = 0;
+	for (let oy = -1; oy <= 1; oy++) {
+		for (let ox = -1; ox <= 1; ox++) {
+			const cx = gx + ox;
+			const cy = gy + oy;
+			const jx = (cx + 0.5 + (hash2(cx, cy, 11) - 0.5) * 0.88) * cell;
+			const jy = (cy + 0.5 + (hash2(cx, cy, 23) - 0.5) * 0.88) * cell;
+			const scale = 0.5 + hash2(cx, cy, 41) * 0.75;
+			const c = edge(Math.hypot(x - jx, y - jy), dark * cell * 0.5 * scale, feather);
+			if (c > best) best = c;
+		}
+	}
+	return best;
+}
+
+function mulInk(r: number, g: number, b: number, cover: number, ir: number, ig: number, ib: number): [number, number, number] {
+	const a = clamp01(cover);
+	return [r * lerp(1, ir, a), g * lerp(1, ig, a), b * lerp(1, ib, a)];
+}
+
 export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 	const { width: w, height: h, data } = src;
 	const out = new Uint8ClampedArray(data.length);
@@ -37,12 +87,10 @@ export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 		return { data: out, width: w, height: h };
 	}
 
-	const lines = Math.round(mod.style) === 1;
+	const style = Math.max(0, Math.min(3, Math.round(mod.style)));
 	const minSide = Math.min(w, h);
 	const cell = Math.max(2.4, 2.6 + clamp01(mod.radius) * minSide * 0.045);
-	const theta = ((mod.angle % 180) * Math.PI) / 180;
-	const cos = Math.cos(theta);
-	const sin = Math.sin(theta);
+	const angle = mod.angle % 180;
 	const inkT = clamp01(mod.tint);
 	const inkR = lerp(0.07, 0.24, inkT);
 	const inkG = lerp(0.065, 0.13, inkT);
@@ -50,8 +98,8 @@ export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 	const paperR = lerp(0.97, 0.93, inkT * 0.55);
 	const paperG = lerp(0.96, 0.88, inkT * 0.55);
 	const paperB = lerp(0.93, 0.76, inkT * 0.55);
-	const gain = 1.08;
 	const feather = Math.max(0.55, cell * 0.12);
+	const gain = 1.08;
 
 	for (let y = 0; y < h; y++) {
 		for (let x = 0; x < w; x++) {
@@ -59,27 +107,39 @@ export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 			const sr = data[i] / 255;
 			const sg = data[i + 1] / 255;
 			const sb = data[i + 2] / 255;
-			const yv = clamp01(luma(sr, sg, sb));
-			const sx = x * cos + y * sin;
-			const sy = -x * sin + y * cos;
-			const dark = (1 - yv) * gain;
-			let cover: number;
-			if (lines) {
-				const d = Math.abs(wrapCenter(sy, cell));
-				const half = dark * cell * 0.5;
-				const t = (half - d) / feather;
-				cover = t <= 0 ? 0 : t >= 1 ? 1 : smooth01(t);
+			let pr: number;
+			let pg: number;
+			let pb: number;
+
+			if (style === 2) {
+				const k = 1 - Math.max(sr, sg, sb);
+				const ik = 1 - k;
+				const c = ik <= 1e-5 ? 0 : (1 - sr - k) / ik;
+				const m = ik <= 1e-5 ? 0 : (1 - sg - k) / ik;
+				const ye = ik <= 1e-5 ? 0 : (1 - sb - k) / ik;
+				let r = paperR;
+				let g = paperG;
+				let b = paperB;
+				[r, g, b] = mulInk(r, g, b, screenDot(x, y, 15 + angle, cell, c * gain, feather), 0.08, 0.62, 0.78);
+				[r, g, b] = mulInk(r, g, b, screenDot(x, y, 75 + angle, cell, m * gain, feather), 0.82, 0.08, 0.4);
+				[r, g, b] = mulInk(r, g, b, screenDot(x, y, 0 + angle, cell, ye * gain, feather), 0.95, 0.84, 0.08);
+				[r, g, b] = mulInk(r, g, b, screenDot(x, y, 45 + angle, cell, k * gain, feather), inkR, inkG, inkB);
+				pr = r;
+				pg = g;
+				pb = b;
 			} else {
-				const dx = wrapCenter(sx, cell);
-				const dy = wrapCenter(sy, cell);
-				const d = Math.hypot(dx, dy);
-				const rad = dark * cell * 0.56;
-				const t = (rad - d) / feather;
-				cover = t <= 0 ? 0 : t >= 1 ? 1 : smooth01(t);
+				const dark = (1 - clamp01(luma(sr, sg, sb))) * gain;
+				const cover =
+					style === 1
+						? screenLine(x, y, angle, cell, dark, feather)
+						: style === 3
+							? mezzCover(x, y, cell, dark, feather)
+							: screenDot(x, y, angle, cell, dark, feather);
+				pr = lerp(paperR, inkR, cover);
+				pg = lerp(paperG, inkG, cover);
+				pb = lerp(paperB, inkB, cover);
 			}
-			const pr = lerp(paperR, inkR, cover);
-			const pg = lerp(paperG, inkG, cover);
-			const pb = lerp(paperB, inkB, cover);
+
 			out[i] = Math.round(lerp(sr, pr, amount) * 255);
 			out[i + 1] = Math.round(lerp(sg, pg, amount) * 255);
 			out[i + 2] = Math.round(lerp(sb, pb, amount) * 255);

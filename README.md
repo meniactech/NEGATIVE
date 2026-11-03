@@ -16,7 +16,7 @@ NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to yo
 - Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
 - Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
 - Light leak fogs the frame like light hit the film: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
-- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges. Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them. Halftone is **Newsprint** dots or a **Line screen**; Pitch is dot size, Ink is black → warm pulp.
+- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges. Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them. Halftone is **Newsprint**, **Line screen**, **Magazine** (CMYK rosette) or **Mezzotint**; Pitch is cell size, Ink is black → warm pulp.
 - Compare any look with a vertical split. Hold **Original** or press **Space** to peek at the ungraded photo.
 - Export the current photo, or apply the current stack to a folder. Originals are never overwritten.
 - Scroll the preview to zoom, drag to pan when zoomed. The percentage (or double-click) fits the whole photo.
@@ -87,7 +87,7 @@ PORT=8084 HOST=127.0.0.1 node build
 | `src/lib/stamp.ts` | 7-segment date stamp. |
 | `src/lib/chroma.ts` | Lateral chromatic smear. |
 | `src/lib/coffee.ts` | Mug rings and coffee spills. |
-| `src/lib/halftone.ts` | Newsprint dots and engraved line screen. |
+| `src/lib/halftone.ts` | Newsprint, line screen, CMYK magazine rosette, mezzotint. |
 | `src/lib/clarity.ts` | Midtone unsharp. |
 | `src/lib/modifiers.ts` | Catalogue of addable effects (labels, defaults). |
 | `src/lib/presets.ts` | Built-in named stacks. Clicking one copies that stack into the editor. |
