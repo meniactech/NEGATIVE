@@ -1,6 +1,6 @@
 /**
  * Print halftone: newsprint dots, engraved lines, a CMYK magazine rosette,
- * or a jittered mezzotint. AM screening, then ink on paper, mixed by amount.
+ * or a velvet mezzotint. AM / FM screening, then ink on paper, mixed by amount.
  */
 import type { Modifier } from './types';
 
@@ -55,22 +55,50 @@ function screenLine(x: number, y: number, angleDeg: number, cell: number, dark: 
 	return edge(Math.abs(wrapCenter(sy, cell)), dark * cell * 0.5, feather);
 }
 
-function mezzCover(x: number, y: number, cell: number, dark: number, feather: number): number {
-	const gx = Math.floor(x / cell);
-	const gy = Math.floor(y / cell);
-	let best = 0;
-	for (let oy = -1; oy <= 1; oy++) {
-		for (let ox = -1; ox <= 1; ox++) {
-			const cx = gx + ox;
-			const cy = gy + oy;
-			const jx = (cx + 0.5 + (hash2(cx, cy, 11) - 0.5) * 0.88) * cell;
-			const jy = (cy + 0.5 + (hash2(cx, cy, 23) - 0.5) * 0.88) * cell;
-			const scale = 0.5 + hash2(cx, cy, 41) * 0.75;
-			const c = edge(Math.hypot(x - jx, y - jy), dark * cell * 0.5 * scale, feather);
-			if (c > best) best = c;
-		}
-	}
-	return best;
+function valueNoise(x: number, y: number, seed: number): number {
+	const x0 = Math.floor(x);
+	const y0 = Math.floor(y);
+	const fx = x - x0;
+	const fy = y - y0;
+	const ux = fx * fx * (3 - 2 * fx);
+	const uy = fy * fy * (3 - 2 * fy);
+	const a = hash2(x0, y0, seed);
+	const b = hash2(x0 + 1, y0, seed);
+	const c = hash2(x0, y0 + 1, seed);
+	const d = hash2(x0 + 1, y0 + 1, seed);
+	return lerp(lerp(a, b, ux), lerp(c, d, ux), uy);
+}
+
+/** Rocker-tooth field: two crossed grain directions. Fine sandpaper, not clouds. */
+function mezzField(x: number, y: number, cell: number, cos: number, sin: number): number {
+	const rx = (x * cos + y * sin) / cell;
+	const ry = (-x * sin + y * cos) / cell;
+	return (
+		valueNoise(rx * 1.15, ry * 1.7, 7) * 0.2 +
+		valueNoise(rx * 2.4, ry * 3.4, 19) * 0.38 +
+		valueNoise(rx * 5.1 + 12, ry * 6.2, 31) * 0.42
+	);
+}
+
+/**
+ * Soft FM mezzotint: local ink density tracks tone, plus rocker grain.
+ * Narrow thresholds turn a face into paper islands — keep this wide and fine.
+ */
+function mezzCover(
+	x: number,
+	y: number,
+	cell: number,
+	dark: number,
+	cos: number,
+	sin: number,
+	cos2: number,
+	sin2: number
+): number {
+	if (dark <= 0.004) return 0;
+	const n = mezzField(x, y, cell, cos, sin) * 0.58 + mezzField(x, y, cell * 1.12, cos2, sin2) * 0.42;
+	const tooth = (hash2(x | 0, y | 0, 99) - 0.5) * 0.07;
+	const amp = 0.2 + dark * 0.14;
+	return clamp01(dark + (n - 0.5) * amp + tooth);
 }
 
 function mulInk(r: number, g: number, b: number, cover: number, ir: number, ig: number, ib: number): [number, number, number] {
@@ -100,6 +128,12 @@ export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 	const paperB = lerp(0.93, 0.76, inkT * 0.55);
 	const feather = Math.max(0.55, cell * 0.12);
 	const gain = 1.08;
+	const th = (angle * Math.PI) / 180;
+	const cosA = Math.cos(th);
+	const sinA = Math.sin(th);
+	const cosB = Math.cos(th + 1.047);
+	const sinB = Math.sin(th + 1.047);
+	const mezzCell = Math.max(2.2, cell * 0.4);
 
 	for (let y = 0; y < h; y++) {
 		for (let x = 0; x < w; x++) {
@@ -133,7 +167,7 @@ export function applyHalftone(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 					style === 1
 						? screenLine(x, y, angle, cell, dark, feather)
 						: style === 3
-							? mezzCover(x, y, cell, dark, feather)
+							? mezzCover(x, y, mezzCell, dark, cosA, sinA, cosB, sinB)
 							: screenDot(x, y, angle, cell, dark, feather);
 				pr = lerp(paperR, inkR, cover);
 				pg = lerp(paperG, inkG, cover);
