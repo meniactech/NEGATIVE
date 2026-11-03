@@ -2,7 +2,7 @@
  * Pixel-grade engine for NEGATIVE.
  *
  * Applies `settings.stack` in order. Point effects run per pixel; blur,
- * border, leak, glow, dust, stamp, chroma, coffee, halftone, crop and clarity are
+ * border, leak, glow, dust, stamp, chroma, dreamy, coffee, halftone, crop and clarity are
  * whole-buffer passes. Unused effects are simply not on the stack. Crop always
  * frames the source first so the look, strength mix and export share one window.
  *
@@ -20,6 +20,7 @@ import { applyChroma, isChromaType } from './chroma';
 import { applyClarity, isClarityType } from './clarity';
 import { applyCoffee, isCoffeeType } from './coffee';
 import { applyCrop, isCropApplied, isCropType, isIdentityCrop } from './crop';
+import { applyDreamy, isDreamyType } from './dreamy';
 import { applyDust, isDustType } from './dust';
 import { applyGlow, isGlowType } from './glow';
 import { applyHalftone, isHalftoneType } from './halftone';
@@ -227,6 +228,7 @@ function isSpatialType(type: Modifier['type']): boolean {
 		isDustType(type) ||
 		isStampType(type) ||
 		isChromaType(type) ||
+		isDreamyType(type) ||
 		isClarityType(type) ||
 		isCoffeeType(type) ||
 		isHalftoneType(type)
@@ -299,6 +301,9 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 			i++;
 		} else if (isChromaType(t)) {
 			work = applyChroma(work, active[i]);
+			i++;
+		} else if (isDreamyType(t)) {
+			work = applyDreamy(work, active[i]);
 			i++;
 		} else if (isClarityType(t)) {
 			work = applyClarity(work, active[i]);

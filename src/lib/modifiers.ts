@@ -251,6 +251,12 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		]
 	},
 	{
+		type: 'dreamy',
+		name: 'Dreamy',
+		note: 'Soft CMY, sharp black',
+		sliders: [{ field: 'amount', label: 'Blur', min: 0, max: 1 }]
+	},
+	{
 		type: 'coffee',
 		name: 'Coffee stain',
 		note: 'Mug rings and spills',
@@ -385,6 +391,8 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 0.85, { id, style: 2, label: '94 08 12' });
 		case 'chroma':
 			return blank(type, 0.28, { id, angle: 0 });
+		case 'dreamy':
+			return blank(type, 0.42, { id });
 		case 'coffee':
 			return blank(type, 0.72, {
 				id,

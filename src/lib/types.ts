@@ -31,6 +31,7 @@ export type ModifierType =
 	| 'dust'
 	| 'stamp'
 	| 'chroma'
+	| 'dreamy'
 	| 'coffee'
 	| 'halftone'
 	| 'crop';
@@ -57,6 +58,7 @@ export const MODIFIER_TYPES: ModifierType[] = [
 	'dust',
 	'stamp',
 	'chroma',
+	'dreamy',
 	'coffee',
 	'halftone',
 	'crop'
