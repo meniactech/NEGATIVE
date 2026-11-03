@@ -18,23 +18,53 @@ const SEG: Record<string, number> = {
 	'9': 0b1111011
 };
 
-function paint(data: Uint8ClampedArray, w: number, h: number, x: number, y: number, r: number, g: number, b: number) {
-	if (x < 0 || y < 0 || x >= w || y >= h) return;
+function paint(
+	data: Uint8ClampedArray,
+	w: number,
+	h: number,
+	x: number,
+	y: number,
+	r: number,
+	g: number,
+	b: number,
+	a: number
+) {
+	if (x < 0 || y < 0 || x >= w || y >= h || a <= 0) return;
 	const i = (y * w + x) * 4;
-	data[i] = r;
-	data[i + 1] = g;
-	data[i + 2] = b;
+	data[i] = data[i] + (r - data[i]) * a;
+	data[i + 1] = data[i + 1] + (g - data[i + 1]) * a;
+	data[i + 2] = data[i + 2] + (b - data[i + 2]) * a;
 }
 
-function hbar(data: Uint8ClampedArray, w: number, h: number, x: number, y: number, len: number, thick: number, rgb: [number, number, number]) {
+function hbar(
+	data: Uint8ClampedArray,
+	w: number,
+	h: number,
+	x: number,
+	y: number,
+	len: number,
+	thick: number,
+	rgb: [number, number, number],
+	a: number
+) {
 	for (let t = 0; t < thick; t++) {
-		for (let i = 0; i < len; i++) paint(data, w, h, x + i, y + t, rgb[0], rgb[1], rgb[2]);
+		for (let i = 0; i < len; i++) paint(data, w, h, x + i, y + t, rgb[0], rgb[1], rgb[2], a);
 	}
 }
 
-function vbar(data: Uint8ClampedArray, w: number, h: number, x: number, y: number, len: number, thick: number, rgb: [number, number, number]) {
+function vbar(
+	data: Uint8ClampedArray,
+	w: number,
+	h: number,
+	x: number,
+	y: number,
+	len: number,
+	thick: number,
+	rgb: [number, number, number],
+	a: number
+) {
 	for (let t = 0; t < thick; t++) {
-		for (let i = 0; i < len; i++) paint(data, w, h, x + t, y + i, rgb[0], rgb[1], rgb[2]);
+		for (let i = 0; i < len; i++) paint(data, w, h, x + t, y + i, rgb[0], rgb[1], rgb[2], a);
 	}
 }
 
@@ -48,18 +78,19 @@ function digit(
 	dw: number,
 	dh: number,
 	thick: number,
-	rgb: [number, number, number]
+	rgb: [number, number, number],
+	a: number
 ) {
 	const bits = SEG[ch];
 	if (!bits) return;
 	const mid = (dh / 2) | 0;
-	if (bits & 0b1000000) hbar(data, w, h, ox + thick, oy, dw - thick * 2, thick, rgb);
-	if (bits & 0b0100000) vbar(data, w, h, ox + dw - thick, oy + thick, mid - thick, thick, rgb);
-	if (bits & 0b0010000) vbar(data, w, h, ox + dw - thick, oy + mid, mid - thick, thick, rgb);
-	if (bits & 0b0001000) hbar(data, w, h, ox + thick, oy + dh - thick, dw - thick * 2, thick, rgb);
-	if (bits & 0b0000100) vbar(data, w, h, ox, oy + mid, mid - thick, thick, rgb);
-	if (bits & 0b0000010) vbar(data, w, h, ox, oy + thick, mid - thick, thick, rgb);
-	if (bits & 0b0000001) hbar(data, w, h, ox + thick, oy + mid - (thick >> 1), dw - thick * 2, thick, rgb);
+	if (bits & 0b1000000) hbar(data, w, h, ox + thick, oy, dw - thick * 2, thick, rgb, a);
+	if (bits & 0b0100000) vbar(data, w, h, ox + dw - thick, oy + thick, mid - thick, thick, rgb, a);
+	if (bits & 0b0010000) vbar(data, w, h, ox + dw - thick, oy + mid, mid - thick, thick, rgb, a);
+	if (bits & 0b0001000) hbar(data, w, h, ox + thick, oy + dh - thick, dw - thick * 2, thick, rgb, a);
+	if (bits & 0b0000100) vbar(data, w, h, ox, oy + mid, mid - thick, thick, rgb, a);
+	if (bits & 0b0000010) vbar(data, w, h, ox, oy + thick, mid - thick, thick, rgb, a);
+	if (bits & 0b0000001) hbar(data, w, h, ox + thick, oy + mid - (thick >> 1), dw - thick * 2, thick, rgb, a);
 }
 
 export function applyStamp(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
@@ -80,18 +111,14 @@ export function applyStamp(src: RgbaBuffer, mod: Modifier): RgbaBuffer {
 	const corner = Math.max(0, Math.min(3, Math.round(mod.style)));
 	let x = corner === 1 || corner === 2 ? w - pad - totalW : pad;
 	let y = corner >= 2 ? h - pad - dh : pad;
-	const rgb: [number, number, number] = [
-		Math.round(255 * (0.85 + amount * 0.15)),
-		Math.round(90 + amount * 40),
-		Math.round(12 + amount * 16)
-	];
+	const rgb: [number, number, number] = [255, 118, 22];
 
 	for (const ch of chars) {
 		if (ch === ' ') {
 			x += dw * 0.55 + gap;
 			continue;
 		}
-		digit(out, w, h, Math.round(x), Math.round(y), ch, dw, dh, thick, rgb);
+		digit(out, w, h, Math.round(x), Math.round(y), ch, dw, dh, thick, rgb, amount);
 		x += dw + gap;
 	}
 	return { data: out, width: w, height: h };

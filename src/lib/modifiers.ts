@@ -363,14 +363,14 @@ export function newModifier(type: ModifierType): Modifier {
 		case 'chroma':
 			return blank(type, 0.28, { id, angle: 0 });
 		case 'coffee':
-			return blank(type, 0.58, {
+			return blank(type, 0.72, {
 				id,
-				tint: 0.42,
+				tint: 0.28,
 				style: 2,
-				centerX: 0.74,
-				centerY: 0.78,
-				radius: 0.38,
-				softness: 0.45,
+				centerX: 0.7,
+				centerY: 0.72,
+				radius: 0.42,
+				softness: 0.32,
 				seed: 0.28
 			});
 	}
