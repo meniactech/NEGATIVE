@@ -1,7 +1,7 @@
 {
 	"name": "negative",
 	"private": true,
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"license": "MIT",
 	"description": "NEGATIVE — film-style photo looks, designed on one image, applied to a folder.",
 	"type": "module",
