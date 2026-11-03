@@ -59,6 +59,12 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 		sliders: [{ field: 'amount', label: 'Saturation', min: 0, max: 2 }]
 	},
 	{
+		type: 'brightness',
+		name: 'Brightness',
+		note: '0 is unchanged',
+		sliders: [{ field: 'amount', label: 'Brightness', min: -0.5, max: 0.5 }]
+	},
+	{
 		type: 'contrast',
 		name: 'Contrast',
 		note: '0 is unchanged',
@@ -204,6 +210,8 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 0.12, { id, tint: 0 });
 		case 'saturation':
 			return blank(type, 1.1, { id });
+		case 'brightness':
+			return blank(type, 0.08, { id });
 		case 'contrast':
 			return blank(type, 0.18, { id });
 		case 'fade':
@@ -263,6 +271,7 @@ export function emptySettings(): GradeSettings {
 export const M = {
 	wb: (temperature: number, tint: number) => blank('wb', temperature, { tint }),
 	saturation: (n: number) => blank('saturation', n),
+	brightness: (n: number) => blank('brightness', n),
 	contrast: (n: number) => blank('contrast', n),
 	fade: (n: number) => blank('fade', n),
 	tone: (shadows: number, highlights: number) => blank('tone', 0, { shadows, highlights }),

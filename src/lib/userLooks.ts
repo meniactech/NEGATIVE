@@ -10,6 +10,7 @@ const KEY = 'negative.looks.v1';
 const TYPES: ModifierType[] = [
 	'wb',
 	'saturation',
+	'brightness',
 	'contrast',
 	'fade',
 	'tone',

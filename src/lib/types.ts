@@ -12,6 +12,7 @@ export type Rgb = [number, number, number];
 export type ModifierType =
 	| 'wb'
 	| 'saturation'
+	| 'brightness'
 	| 'contrast'
 	| 'fade'
 	| 'tone'

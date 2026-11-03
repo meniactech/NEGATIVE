@@ -9,6 +9,7 @@ import type { GradeSettings, Modifier, ModifierType, Rgb } from '$lib/types';
 const TYPES: ModifierType[] = [
 	'wb',
 	'saturation',
+	'brightness',
 	'contrast',
 	'fade',
 	'tone',

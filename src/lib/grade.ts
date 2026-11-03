@@ -109,6 +109,13 @@ function applyPointRun(src: RgbaBuffer, mods: Modifier[]): RgbaBuffer {
 						b = lerp(yv, b, mod.amount);
 						break;
 					}
+					case 'brightness': {
+						const lift = mod.amount * 0.45;
+						r = clamp01(r + lift);
+						g = clamp01(g + lift);
+						b = clamp01(b + lift);
+						break;
+					}
 					case 'contrast': {
 						const c = 1 + mod.amount * 1.4;
 						r = clamp01((r - 0.5) * c + 0.5);

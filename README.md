@@ -11,7 +11,7 @@ NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to yo
 - Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
 - Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process.
 - **Mine**: save, rename, duplicate and delete your own looks. They live in this browser (`localStorage`), not in a file.
-- Stack modifiers (only stacked effects run): white balance, saturation, contrast, fade, tone, vignette, grain, black & white, split tone, **radial blur**, **linear blur**, **border**, **light leak**.
+- Stack modifiers (only stacked effects run): white balance, saturation, brightness, contrast, fade, tone, vignette, grain, black & white, split tone, **radial blur**, **linear blur**, **border**, **light leak**.
 - Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
 - Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
 - Light leak fogs the frame like light hit the film: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
