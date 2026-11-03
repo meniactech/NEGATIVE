@@ -77,7 +77,9 @@
 		const s = scrub;
 		if (!s || (s.field !== 'centerX' && s.field !== 'centerY')) return null;
 		const m = settings.stack.find((x) => x.id === s.id);
-		if (!m || (m.type !== 'blurRadial' && m.type !== 'blurLinear' && m.type !== 'leak')) return null;
+		if (!m || (m.type !== 'blurRadial' && m.type !== 'blurLinear' && m.type !== 'leak' && m.type !== 'coffee')) {
+			return null;
+		}
 		void m.centerX;
 		void m.centerY;
 		void m.radius;

@@ -1,4 +1,4 @@
-/** Stable 0..1 hash from a string. Used to vary grain / leak / dust per file. */
+/** Stable 0..1 hash from a string. Used to vary grain / leak / dust / coffee per file. */
 export function hashString(s: string): number {
 	let h = 2166136261;
 	for (let i = 0; i < s.length; i++) {

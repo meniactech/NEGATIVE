@@ -249,6 +249,25 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
 			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 }
 		]
+	},
+	{
+		type: 'coffee',
+		name: 'Coffee stain',
+		note: 'Mug rings and spills',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'tint', label: 'Roast', min: 0, max: 1 },
+			{ field: 'centerX', label: 'Center X', min: 0, max: 1 },
+			{ field: 'centerY', label: 'Center Y', min: 0, max: 1 },
+			{ field: 'radius', label: 'Size', min: 0.05, max: 1 },
+			{ field: 'softness', label: 'Wear', min: 0, max: 1 },
+			{ field: 'seed', label: 'Seed', min: 0, max: 1 }
+		],
+		styles: [
+			{ value: 0, label: 'Rings' },
+			{ value: 1, label: 'Spills' },
+			{ value: 2, label: 'Both' }
+		]
 	}
 ];
 
@@ -343,6 +362,17 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 0.85, { id, style: 2, label: '94 08 12' });
 		case 'chroma':
 			return blank(type, 0.28, { id, angle: 0 });
+		case 'coffee':
+			return blank(type, 0.58, {
+				id,
+				tint: 0.42,
+				style: 2,
+				centerX: 0.74,
+				centerY: 0.78,
+				radius: 0.38,
+				softness: 0.45,
+				seed: 0.28
+			});
 	}
 }
 

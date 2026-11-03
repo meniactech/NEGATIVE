@@ -30,7 +30,8 @@ export type ModifierType =
 	| 'bloom'
 	| 'dust'
 	| 'stamp'
-	| 'chroma';
+	| 'chroma'
+	| 'coffee';
 
 export const MODIFIER_TYPES: ModifierType[] = [
 	'wb',
@@ -53,7 +54,8 @@ export const MODIFIER_TYPES: ModifierType[] = [
 	'bloom',
 	'dust',
 	'stamp',
-	'chroma'
+	'chroma',
+	'coffee'
 ];
 
 /**
@@ -82,9 +84,9 @@ export type Modifier = {
 	angle: number;
 	/** Blur: 0 sharp-in-mask, 1 inverted (blur the focus region). */
 	invert: number;
-	/** Border / leak / stamp / B&W filter look. */
+	/** Border / leak / stamp / B&W / coffee look. */
 	style: number;
-	/** Grain / leak / dust: phase. Mixed with `batchKey` on folder batch. */
+	/** Grain / leak / dust / coffee: phase. Mixed with `batchKey` on folder batch. */
 	seed: number;
 	/** Date stamp text (e.g. 94 08 12). */
 	label: string;
@@ -95,7 +97,7 @@ export type GradeSettings = {
 	/** 0 original … 1 full stack. */
 	strength: number;
 	stack: Modifier[];
-	/** Per-file key so grain / leak / dust differ across a batch. */
+	/** Per-file key so grain / leak / dust / coffee differ across a batch. */
 	batchKey?: string;
 };
 
