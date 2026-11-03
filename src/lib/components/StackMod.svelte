@@ -75,6 +75,7 @@
 					onchange={(e) => {
 						const next = Number(e.currentTarget.value);
 						mod.style = next;
+						if (mod.type !== 'border') return;
 						if (next === 2 && mod.tint > 0.45) mod.tint = 0.08;
 						else if (next !== 2 && mod.tint < 0.45) mod.tint = next === 1 ? 0.94 : 0.9;
 					}}

@@ -145,6 +145,25 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 			{ value: 1, label: 'Polaroid' },
 			{ value: 2, label: 'Film' }
 		]
+	},
+	{
+		type: 'leak',
+		name: 'Light leak',
+		note: 'Fogged film: edge, corner, or streak',
+		sliders: [
+			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
+			{ field: 'tint', label: 'Color', min: 0, max: 1 },
+			{ field: 'centerX', label: 'Center X', min: 0, max: 1 },
+			{ field: 'centerY', label: 'Center Y', min: 0, max: 1 },
+			{ field: 'radius', label: 'Spread', min: 0.08, max: 1 },
+			{ field: 'softness', label: 'Softness', min: 0.1, max: 1 },
+			{ field: 'angle', label: 'Angle', min: 0, max: 180, step: 1 }
+		],
+		styles: [
+			{ value: 0, label: 'Edge' },
+			{ value: 1, label: 'Corner' },
+			{ value: 2, label: 'Streak' }
+		]
 	}
 ];
 
@@ -209,6 +228,17 @@ export function newModifier(type: ModifierType): Modifier {
 			return blank(type, 0.55, { id, angle: 0, radius: 0.16, softness: 0.4 });
 		case 'border':
 			return blank(type, 0.1, { id, tint: 0.9, shadows: 0.22, style: 0 });
+		case 'leak':
+			return blank(type, 0.62, {
+				id,
+				tint: 0.28,
+				style: 0,
+				centerX: 0.04,
+				centerY: 0.4,
+				radius: 0.4,
+				softness: 0.55,
+				angle: 12
+			});
 	}
 }
 
@@ -242,5 +272,15 @@ export const M = {
 	split: (amount: number, shadows: Rgb, highlights: Rgb) =>
 		blank('split', amount, { splitShadows: shadows, splitHighlights: highlights }),
 	border: (width: number, tone: number, warmth = 0.22, style = 0) =>
-		blank('border', width, { tint: tone, shadows: warmth, style })
+		blank('border', width, { tint: tone, shadows: warmth, style }),
+	leak: (amount: number, color = 0.28, style = 0) =>
+		blank('leak', amount, {
+			tint: color,
+			style,
+			centerX: 0.04,
+			centerY: 0.4,
+			radius: 0.4,
+			softness: 0.55,
+			angle: 12
+		})
 };

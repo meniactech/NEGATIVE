@@ -18,7 +18,8 @@ const TYPES: ModifierType[] = [
 	'split',
 	'blurRadial',
 	'blurLinear',
-	'border'
+	'border',
+	'leak'
 ];
 
 export function assertLocal(event: RequestEvent): void {

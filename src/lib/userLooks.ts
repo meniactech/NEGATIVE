@@ -19,7 +19,8 @@ const TYPES: ModifierType[] = [
 	'split',
 	'blurRadial',
 	'blurLinear',
-	'border'
+	'border',
+	'leak'
 ];
 
 function asRgb(value: unknown, fallback: Rgb): Rgb {

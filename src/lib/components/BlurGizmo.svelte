@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * Overlay on the preview while a blur Center/Shift slider is dragged.
-	 * Geometry matches `blur.ts` (radial disc / linear band through the centre).
+	 * Overlay on the preview while a Center / Shift slider is dragged.
+	 * Blur: radial disc or linear band. Light leak: origin plus spread / streak.
 	 */
 	import type { Modifier } from '$lib/types';
 
@@ -15,7 +15,10 @@
 	const arm = $derived(Math.max(10, minSide * 0.04));
 	const mark = $derived(Math.max(5, minSide * 0.01));
 	const inner = $derived(
-		Math.max(0, mod.radius * minSide * (mod.type === 'blurLinear' ? 0.5 : 1))
+		Math.max(
+			0,
+			mod.radius * minSide * (mod.type === 'blurLinear' || (mod.type === 'leak' && mod.style === 2) ? 0.5 : 1)
+		)
 	);
 	const theta = $derived(((mod.angle % 180) * Math.PI) / 180);
 	const nx = $derived(Math.sin(theta));
@@ -30,20 +33,20 @@
 		<line x1={cx - arm} y1={cy} x2={cx + arm} y2={cy} />
 		<line x1={cx} y1={cy - arm} x2={cx} y2={cy + arm} />
 		<circle class="gizmo-dot" cx={cx} cy={cy} r={mark} />
-		{#if mod.type === 'blurRadial'}
-			<circle {cx} {cy} r={Math.max(mark * 1.2, inner)} />
-		{:else}
+		{#if mod.type === 'blurLinear' || (mod.type === 'leak' && mod.style === 2)}
 			<line x1={cx - bx} y1={cy - by} x2={cx + bx} y2={cy + by} />
+		{:else}
+			<circle {cx} {cy} r={Math.max(mark * 1.2, inner)} />
 		{/if}
 	</g>
 	<g class="gizmo-stroke">
 		<line x1={cx - arm} y1={cy} x2={cx + arm} y2={cy} />
 		<line x1={cx} y1={cy - arm} x2={cx} y2={cy + arm} />
 		<circle class="gizmo-dot" cx={cx} cy={cy} r={mark} />
-		{#if mod.type === 'blurRadial'}
-			<circle {cx} {cy} r={Math.max(mark * 1.2, inner)} />
-		{:else}
+		{#if mod.type === 'blurLinear' || (mod.type === 'leak' && mod.style === 2)}
 			<line x1={cx - bx} y1={cy - by} x2={cx + bx} y2={cy + by} />
+		{:else}
+			<circle {cx} {cy} r={Math.max(mark * 1.2, inner)} />
 		{/if}
 	</g>
 </svg>

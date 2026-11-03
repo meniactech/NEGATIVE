@@ -3,7 +3,7 @@
 	 * Designer: looks load a modifier stack. Add / reorder / remove effects.
 	 * Only stacked modifiers run. Export and batch send the current stack.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import BlurGizmo from '$lib/components/BlurGizmo.svelte';
 	import Slider from '$lib/components/Slider.svelte';
 	import StackMod from '$lib/components/StackMod.svelte';
@@ -27,7 +27,16 @@
 	let originalCanvas = $state<HTMLCanvasElement | null>(null);
 	let previewCanvas = $state<HTMLCanvasElement | null>(null);
 	let viewEl = $state<HTMLCanvasElement | null>(null);
+	let stageViewEl = $state<HTMLElement | null>(null);
 	let showOriginal = $state(false);
+	/** 1 = whole photo fits in the stage. */
+	let viewZoom = $state(1);
+	let viewPanX = $state(0);
+	let viewPanY = $state(0);
+	let viewBox = $state({ w: 0, h: 0 });
+	let panning = $state(false);
+	let panActive = false;
+	let panLast: { x: number; y: number } | null = null;
 	let fileOver = $state(false);
 	let dragFrom = $state<number | null>(null);
 	/** Insertion index while dragging: 0 = before first, stack.length = after last. */
@@ -59,7 +68,7 @@
 		const s = scrub;
 		if (!s || (s.field !== 'centerX' && s.field !== 'centerY')) return null;
 		const m = settings.stack.find((x) => x.id === s.id);
-		if (!m || (m.type !== 'blurRadial' && m.type !== 'blurLinear')) return null;
+		if (!m || (m.type !== 'blurRadial' && m.type !== 'blurLinear' && m.type !== 'leak')) return null;
 		void m.centerX;
 		void m.centerY;
 		void m.radius;
@@ -69,6 +78,15 @@
 	const shown = $derived(showOriginal ? originalCanvas : previewCanvas);
 	const usedTypes = $derived(new Set(settings.stack.map((m) => m.type)));
 	const addable = $derived(MODIFIER_INFO.filter((m) => !usedTypes.has(m.type)));
+	const imgW = $derived(originalCanvas?.width || shown?.width || 0);
+	const imgH = $derived(originalCanvas?.height || shown?.height || 0);
+	const fitScale = $derived.by(() => {
+		if (!imgW || !imgH || !viewBox.w || !viewBox.h) return 1;
+		const pad = 32;
+		return Math.min((viewBox.w - pad) / imgW, (viewBox.h - pad) / imgH);
+	});
+	const viewScale = $derived(fitScale * viewZoom);
+	const zoomLabel = $derived(`${Math.round(viewZoom * 100)}%`);
 
 	async function openFile(next: File) {
 		status = '';
@@ -85,6 +103,7 @@
 		frameCanvas = null;
 		previewCanvas = null;
 		showOriginal = false;
+		resetView();
 	}
 
 	function frameSize(): { w: number; h: number } | null {
@@ -153,6 +172,108 @@
 			addType = addable[0].type;
 		}
 	});
+
+	$effect(() => {
+		const el = stageViewEl;
+		if (!el) return;
+		const measure = () => {
+			viewBox = { w: el.clientWidth, h: el.clientHeight };
+		};
+		measure();
+		const ro = new ResizeObserver(measure);
+		ro.observe(el);
+		const onWheel = (e: WheelEvent) => {
+			if (!viewEl) return;
+			e.preventDefault();
+			const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+			zoomAt(e.clientX, e.clientY, viewZoom * factor);
+		};
+		el.addEventListener('wheel', onWheel, { passive: false });
+		return () => {
+			ro.disconnect();
+			el.removeEventListener('wheel', onWheel);
+		};
+	});
+
+	$effect(() => {
+		void viewBox.w;
+		void viewBox.h;
+		void viewZoom;
+		const cur = untrack(() => ({ x: viewPanX, y: viewPanY }));
+		const c = clampPan(cur.x, cur.y, viewZoom);
+		if (c.x !== cur.x || c.y !== cur.y) {
+			viewPanX = c.x;
+			viewPanY = c.y;
+		}
+	});
+
+	const ZOOM_MIN = 0.25;
+	const ZOOM_MAX = 8;
+
+	function clampPan(x: number, y: number, zoom: number): { x: number; y: number } {
+		if (!imgW || !imgH || !viewBox.w) return { x: 0, y: 0 };
+		const s = Math.min((viewBox.w - 32) / imgW, (viewBox.h - 32) / imgH) * zoom;
+		const maxX = Math.max(0, (imgW * s - viewBox.w) / 2 + 16);
+		const maxY = Math.max(0, (imgH * s - viewBox.h) / 2 + 16);
+		return {
+			x: Math.min(maxX, Math.max(-maxX, x)),
+			y: Math.min(maxY, Math.max(-maxY, y))
+		};
+	}
+
+	function resetView() {
+		viewZoom = 1;
+		viewPanX = 0;
+		viewPanY = 0;
+	}
+
+	function zoomAt(clientX: number, clientY: number, nextZoom: number) {
+		const el = stageViewEl;
+		if (!el) return;
+		const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextZoom));
+		const rect = el.getBoundingClientRect();
+		const mx = clientX - rect.left - rect.width / 2;
+		const my = clientY - rect.top - rect.height / 2;
+		const k = next / viewZoom;
+		const clamped = clampPan(mx - (mx - viewPanX) * k, my - (my - viewPanY) * k, next);
+		viewZoom = next;
+		viewPanX = clamped.x;
+		viewPanY = clamped.y;
+	}
+
+	function nudgeZoom(factor: number) {
+		const el = stageViewEl;
+		if (!el) return;
+		const r = el.getBoundingClientRect();
+		zoomAt(r.left + r.width / 2, r.top + r.height / 2, viewZoom * factor);
+	}
+
+	function onFramePointerDown(e: PointerEvent) {
+		if (e.button !== 0 || viewZoom <= 1.001) return;
+		e.preventDefault();
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			/* synthetic events may not support capture */
+		}
+		panActive = true;
+		panning = true;
+		panLast = { x: e.clientX, y: e.clientY };
+	}
+
+	function onFramePointerMove(e: PointerEvent) {
+		if (!panActive || !panLast) return;
+		const next = clampPan(viewPanX + e.clientX - panLast.x, viewPanY + e.clientY - panLast.y, viewZoom);
+		viewPanX = next.x;
+		viewPanY = next.y;
+		panLast = { x: e.clientX, y: e.clientY };
+	}
+
+	function onFramePointerUp() {
+		panActive = false;
+		panning = false;
+		panLast = null;
+	}
 
 	function onDrop(e: DragEvent) {
 		e.preventDefault();
@@ -371,16 +492,19 @@
 <main class="workspace">
 	<nav class="rail" aria-label="Looks">
 		<h2>Looks</h2>
-		<p class="tag">Loads a modifier stack.</p>
 		{#each LOOKS as item (item.id)}
-			<button class="look" class:is-on={item.id === selectedId} type="button" onclick={() => pickLook(item.id)}>
+			<button
+				class="look"
+				class:is-on={item.id === selectedId}
+				type="button"
+				title={item.note}
+				onclick={() => pickLook(item.id)}
+			>
 				<strong>{item.name}</strong>
-				<em>{item.note}</em>
 			</button>
 		{/each}
 
 		<h2 class="rail-split">Mine</h2>
-		<p class="tag">Saved in this browser.</p>
 		<div class="mine-bar">
 			<input
 				type="text"
@@ -408,9 +532,14 @@
 						onblur={commitRename}
 					/>
 				{:else}
-					<button class="look" class:is-on={item.id === selectedId} type="button" onclick={() => pickLook(item.id)}>
+					<button
+						class="look"
+						class:is-on={item.id === selectedId}
+						type="button"
+						title={item.note}
+						onclick={() => pickLook(item.id)}
+					>
 						<strong>{item.name}</strong>
-						<em>{item.note}</em>
 					</button>
 				{/if}
 				<div class="look-tools">
@@ -447,21 +576,39 @@
 			{#if file}
 				<span class="tag">{file.name} · {lookName}</span>
 			{/if}
+			{#if shown}
+				<div class="zoom-bar" role="group" aria-label="Preview zoom">
+					<button class="btn" type="button" disabled={viewZoom <= 0.25} onclick={() => nudgeZoom(1 / 1.25)} aria-label="Zoom out">−</button>
+					<button class="btn zoom-readout" type="button" onclick={resetView} title="Fit photo in view">{zoomLabel}</button>
+					<button class="btn" type="button" disabled={viewZoom >= 8} onclick={() => nudgeZoom(1.25)} aria-label="Zoom in">+</button>
+				</div>
+			{/if}
 		</div>
 		<div
 			class="stage-view"
+			class:is-zoomed={viewZoom > 1.001}
+			class:is-panning={panning}
+			bind:this={stageViewEl}
 			ondragover={(e) => {
 				e.preventDefault();
 				fileOver = true;
 			}}
 			ondragleave={() => (fileOver = false)}
 			ondrop={onDrop}
+			onpointerdown={onFramePointerDown}
+			onpointermove={onFramePointerMove}
+			onpointerup={onFramePointerUp}
+			onpointercancel={onFramePointerUp}
+			ondblclick={resetView}
 			role="region"
 			aria-label="Preview"
 		>
-			{#if shown}
-				<div class="stage-frame">
-					<canvas bind:this={viewEl}></canvas>
+			{#if shown && imgW && imgH}
+				<div
+					class="stage-frame"
+					style="width:{imgW}px;height:{imgH}px;margin-left:{-imgW / 2}px;margin-top:{-imgH / 2}px;transform:translate({viewPanX}px,{viewPanY}px) scale({viewScale})"
+				>
+					<canvas bind:this={viewEl} draggable="false"></canvas>
 					{#if gizmoMod && originalCanvas}
 						<BlurGizmo mod={gizmoMod} width={originalCanvas.width} height={originalCanvas.height} />
 					{/if}
@@ -478,14 +625,25 @@
 		<div class="side-block">
 			<h2>Mix</h2>
 			<Slider id="s-strength" label="Strength" min={0} max={1} bind:value={settings.strength} />
-			<h2>Stack</h2>
-			<p class="tag">Applied top to bottom. Drag the grip to reorder. Click a name to open.</p>
+			<h2>Modifiers</h2>
+			{#if addable.length}
+				<div class="add-row">
+					<select class="add-select" bind:value={addType} aria-label="Modifier to add">
+						{#each addable as m (m.type)}
+							<option value={m.type}>{m.name}</option>
+						{/each}
+					</select>
+					<button class="btn" type="button" onclick={addModifier}>Add</button>
+				</div>
+			{:else}
+				<p class="tag">All modifiers are on.</p>
+			{/if}
 		</div>
 		<div
 			class="stack-scroll"
 			class:is-reordering={dragFrom !== null}
 			role="list"
-			aria-label="Modifier stack"
+			aria-label="Modifiers"
 			ondragover={onStackDragOver}
 			ondragleave={onStackDragLeave}
 			ondrop={onStackDrop}
@@ -507,19 +665,6 @@
 			{/each}
 		</div>
 		<div class="side-block foot">
-			{#if addable.length}
-				<div class="add-row">
-					<select class="add-select" bind:value={addType} aria-label="Modifier to add">
-						{#each addable as m (m.type)}
-							<option value={m.type}>{m.name}</option>
-						{/each}
-					</select>
-					<button class="btn" type="button" onclick={addModifier}>Add</button>
-				</div>
-			{:else}
-				<p class="tag">All modifiers are on the stack.</p>
-			{/if}
-
 			<h2>Folder batch</h2>
 			<p class="tag">Uses this stack. Originals are not overwritten.</p>
 			<div class="field">

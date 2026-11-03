@@ -21,7 +21,8 @@ export type ModifierType =
 	| 'split'
 	| 'blurRadial'
 	| 'blurLinear'
-	| 'border';
+	| 'border'
+	| 'leak';
 
 /**
  * One effect on the stack. `amount` is the main slider; extra fields are
@@ -49,7 +50,7 @@ export type Modifier = {
 	angle: number;
 	/** Blur: 0 sharp-in-mask, 1 inverted (blur the focus region). */
 	invert: number;
-	/** Border look: 0 print, 1 Polaroid, 2 film rebate. */
+	/** Border: 0 print, 1 Polaroid, 2 film. Leak: 0 edge, 1 corner, 2 streak. */
 	style: number;
 };
 

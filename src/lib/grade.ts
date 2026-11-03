@@ -1,8 +1,9 @@
 /**
  * Pixel-grade engine for NEGATIVE.
  *
- * Applies `settings.stack` in order. Point effects run per pixel; blur and
- * border are whole-buffer passes. Unused effects are simply not on the stack.
+ * Applies `settings.stack` in order. Point effects run per pixel; blur,
+ * border and light leak are whole-buffer passes. Unused effects are simply
+ * not on the stack.
  *
  * This file has no DOM and no Node APIs. Preview, export and batch all
  * call `gradeRgba` with the same settings object.
@@ -14,6 +15,7 @@
  */
 import { applyBorder, isBorderType } from './border';
 import { applyMaskedBlur, isBlurType } from './blur';
+import { applyLightLeak, isLeakType } from './leak';
 import type { GradeSettings, Modifier, Rgb } from './types';
 
 export type RgbaBuffer = {
@@ -220,9 +222,17 @@ export function gradeRgba(src: RgbaBuffer, settings: GradeSettings): RgbaBuffer 
 		} else if (isBorderType(t)) {
 			work = applyBorder(work, active[i]);
 			i++;
+		} else if (isLeakType(t)) {
+			work = applyLightLeak(work, active[i]);
+			i++;
 		} else {
 			const run: Modifier[] = [];
-			while (i < active.length && !isBlurType(active[i].type) && !isBorderType(active[i].type)) {
+			while (
+				i < active.length &&
+				!isBlurType(active[i].type) &&
+				!isBorderType(active[i].type) &&
+				!isLeakType(active[i].type)
+			) {
 				run.push(active[i]);
 				i++;
 			}
