@@ -34,7 +34,7 @@ export type StyleChoice = {
 export type ModifierInfo = {
 	type: ModifierType;
 	name: string;
-	/** Shown in the Add menu. */
+	/** Short hint — Add-menu tooltip. */
 	note: string;
 	sliders: SliderSpec[];
 	/** Extra RGB sliders (split tone). */
@@ -253,7 +253,7 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 	{
 		type: 'dreamy',
 		name: 'Dreamy',
-		note: 'Soft CMY, sharp black',
+		note: 'Gaussian CMY, sharp black',
 		sliders: [{ field: 'amount', label: 'Blur', min: 0, max: 1 }]
 	},
 	{
@@ -278,13 +278,13 @@ export const MODIFIER_INFO: ModifierInfo[] = [
 	{
 		type: 'crop',
 		name: 'Crop',
-		note: 'Rectangle on the photo',
+		note: 'Draw a rectangle, then Crop',
 		sliders: []
 	},
 	{
 		type: 'halftone',
 		name: 'Halftone',
-		note: 'Newsprint, lines, magazine rosette, mezzotint',
+		note: 'Newsprint, lines, magazine, mezzotint',
 		sliders: [
 			{ field: 'amount', label: 'Amount', min: 0, max: 1 },
 			{ field: 'radius', label: 'Pitch', min: 0, max: 1 },

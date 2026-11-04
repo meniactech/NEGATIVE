@@ -812,7 +812,7 @@
 				<select class="add-select" bind:value={compareId} aria-label="Compare look">
 					<option value="">Compare</option>
 					{#each compareLooks as item (item.id)}
-						<option value={item.id}>{item.name}</option>
+						<option value={item.id} title={item.note}>{item.name}</option>
 					{/each}
 				</select>
 				{#if compareId}
@@ -890,7 +890,7 @@
 				<div class="add-row">
 					<select class="add-select" bind:value={addType} aria-label="Modifier to add">
 						{#each addable as m (m.type)}
-							<option value={m.type}>{m.name}</option>
+							<option value={m.type} title={m.note}>{m.name}</option>
 						{/each}
 					</select>
 					<button class="btn" type="button" onclick={addModifier}>Add</button>

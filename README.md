@@ -2,24 +2,31 @@
 
 Film-style looks for ordinary photos. Design on one JPEG/PNG/WebP, then apply the same recipe to a whole folder.
 
-NEGATIVE by MENiAC. No RAW. No video. Local-only — the batch route talks to your filesystem and only accepts requests from this machine.
+NEGATIVE by MENiAC, 0.2.0. No RAW. No video. Local-only — the batch route talks to your filesystem and only accepts requests from this machine.
 
 ![NEGATIVE UI](docs/NEGATIVE.png)
 
 ## What you can do
 
-- Open a photo, pick a built-in look, then add / reorder / tweak modifiers.
-- Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process.
+- Open a photo, pick a built-in look, then add / reorder / tweak modifiers. Only stacked effects run.
+- Built-in looks: Neutral, Negative, Portra, Kodachrome, Ektar, Tri-X, Faded 70s, Cross process. Hover a look for its note.
 - **Mine**: save, rename, duplicate, delete, **export** and **import** your own looks. They live in this browser (`localStorage`); the JSON file is for backup or another machine.
-- Stack modifiers (only stacked effects run): white balance, saturation, brightness, **exposure**, contrast, **clarity**, fade, tone, vignette, grain, black & white, split tone, radial / linear blur, **crop**, border, light leak, **halation**, **bloom**, **dust & scratches**, **date stamp**, **chromatic smear**, **dreamy**, **coffee stain**, **halftone**.
-- Grain has a Color slider (luma → chroma) and a Seed. Black & white can use Luma / Red / Orange / Yellow / Green filters. Light leak, dust and coffee also have a seed; folder batch mixes that seed with each filename so grain, leaks, dust and stains vary per photo.
-- Radial blur uses a disc mask (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo on the photo; it hides on mouse up.
-- Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
-- Light leak fogs the frame like light hit the film: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
-- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges. Dreamy converts to CMYK, Gaussian-blurs C/M/Y and keeps K sharp, then returns to RGB — Blur is the plate spread. Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them. Halftone is **Newsprint**, **Line screen**, **Magazine** (CMYK rosette) or **Mezzotint** (velvet rocker grain); Pitch is cell size, Ink is black → warm pulp. Crop is a rectangle on the photo — drag the box or its handles, then **Crop**. **Reset** returns to the full frame.
-- Compare any look with a vertical split. Hold **Original** or press **Space** to peek at the ungraded photo.
+- Compare any look with a vertical split. **Exit Compare** leaves it. Hold **Original** or press **Space** to peek at the ungraded photo.
 - Export the current photo, or apply the current stack to a folder. Originals are never overwritten.
 - Scroll the preview to zoom, drag to pan when zoomed. The percentage (or double-click) fits the whole photo.
+
+### Modifiers
+
+- White balance, saturation, brightness, exposure, contrast, clarity, fade, tone, vignette, grain, black & white, split tone.
+- Grain has Color (luma → chroma) and Seed. Black & white can use Luma / Red / Orange / Yellow / Green filters. Light leak, dust and coffee also have a seed; folder batch mixes that seed with each filename so they vary per photo.
+- Radial blur is a disc (sharp centre). Linear blur is a rotatable band (tilt-shift). Drag Center / Shift sliders to see a gizmo; it hides on mouse up.
+- **Crop**: draw a rectangle on the photo (stays inside the edges), then **Crop**. Preview and export become that area — they do not stretch it back onto the original frame. **Reset** restores the full photo.
+- Border scales the photo into the frame: **Print** (even paper), **Polaroid** (thick bottom), **Film** (rebate + sprockets). Tone is paper / stock (white → black); Warmth tints it cream.
+- Light leak fogs the frame: **Edge**, **Corner**, or **Streak**. Color is yellow → orange → red → magenta. Drag Center to place it.
+- Halation is a red/orange glow on brights; bloom is a softer white diffusion. Dust paints specks and hairs. Date stamp is a 7-segment LCD (default `94 08 12`). Chromatic smear offsets red and blue, stronger at the edges.
+- **Dreamy** converts to CMYK, Gaussian-blurs C/M/Y and keeps K sharp, then returns to RGB. **Blur** is the plate spread.
+- Coffee stain paints mug rings and spills (Roast is latte → espresso); drag Center to place them.
+- Halftone is **Newsprint**, **Line screen**, **Magazine** (CMYK rosette) or **Mezzotint** (velvet rocker grain). Pitch is cell size; Ink is black → warm pulp.
 
 ## Requirements
 
@@ -102,7 +109,7 @@ PORT=8084 HOST=127.0.0.1 node build
 
 A look is a named stack of modifiers. Add only the effects you need; each one has its own sliders. Export and folder batch send the current stack. Order is apply order (top to bottom). Collapse is UI-only and is not saved.
 
-Preview grades a small live raster while a slider moves, then a sharper pass after it settles, drawn at a fixed frame size so the picture does not jump.
+Preview grades a small live raster while a slider moves, then a sharper pass after it settles. The stage follows the current grade’s aspect, so a crop becomes a new frame instead of stretching to the original.
 
 ## License
 
